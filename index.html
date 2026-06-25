@@ -163,6 +163,28 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
   .ai-panel{width:100%}
   .change-cards{grid-template-columns:1fr}
 }
+
+  /* FUNNEL VIZ */
+  .fv-wrap { display:flex; align-items:flex-end; gap:0; min-width:600px; }
+  .fv-step { display:flex; flex-direction:column; align-items:center; flex:1; position:relative; }
+  .fv-label { font-size:12px; font-weight:600; color:var(--muted); text-align:center; margin-bottom:8px; }
+  .fv-count { font-size:22px; font-weight:800; color:var(--navy); text-align:center; margin-bottom:10px; letter-spacing:-.02em; }
+  .fv-bar-wrap { width:100%; display:flex; justify-content:center; }
+  .fv-bar { width:80%; border-radius:6px 6px 0 0; background:var(--navy); transition:height .4s ease; position:relative; min-height:4px; }
+  .fv-bar.highlighted { background:var(--gold); }
+  .fv-connector { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; padding-bottom:0; flex-shrink:0; width:60px; }
+  .fv-arrow-box { background:#2D8A5F; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; flex-shrink:0; }
+  .fv-arrow-box svg { width:16px; height:16px; fill:#fff; }
+  .fv-cr { font-size:11px; font-weight:700; color:#2D8A5F; text-align:center; }
+  .fv-cr-label { font-size:10px; color:var(--muted); text-align:center; }
+  .fv-drop-row { display:flex; gap:0; min-width:600px; margin-top:0; border-top:2px solid var(--border); padding-top:10px; }
+  .fv-drop-step { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .fv-drop-icon { width:26px; height:26px; background:#C0392B; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .fv-drop-icon svg { width:12px; height:12px; fill:#fff; }
+  .fv-drop-n { font-size:14px; font-weight:700; color:var(--neg); }
+  .fv-drop-label { font-size:10px; color:var(--muted); }
+  .fv-drop-pct { font-size:11px; font-weight:700; color:var(--neg); }
+  .fv-connector-spacer { width:60px; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -395,6 +417,16 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
         <button class="btn-sm" id="fn-reset">Reset</button>
       </div>
       <div class="pills" id="fn-pills"></div>
+
+      <!-- FUNNEL VISUALISATION -->
+      <div class="chart-card" style="margin-bottom:20px">
+        <h3>Checkout funnel snapshot</h3>
+        <div class="chart-sub" id="fn-snapshot-sub">Selected date range totals</div>
+        <div id="fn-funnel-viz" style="margin-top:16px;overflow-x:auto">
+          <!-- rendered by JS -->
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:20px">
         <div class="chart-card" style="grid-column:1/-1"><h3>Weekly checkout volume</h3><div class="chart-sub">begin_checkout events per week</div><div class="chart-wrap tall"><canvas id="fn-checkout"></canvas></div></div>
         <div class="chart-card" style="grid-column:1/-1"><h3>Funnel step drop-off rates</h3><div class="chart-sub">% of begin_checkout reaching each step</div><div class="chart-wrap tall"><canvas id="fn-dropoff"></canvas></div></div>
@@ -1069,6 +1101,59 @@ function initFunnel(){
   const fromEl=document.getElementById('fn-from'),toEl=document.getElementById('fn-to');
   fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
+  function renderFunnelViz(filtered){
+    const steps = [
+      { label:'Begin checkout',    key:'begin_checkout' },
+      { label:'Add shipping info', key:'add_shipping_info' },
+      { label:'Add payment info',  key:'add_payment_info' },
+      { label:'Purchase',          key:'purchase' },
+    ];
+    const totals = steps.map(s => filtered.reduce((sum,r)=>sum+(r[s.key]||0),0));
+    const maxVal = Math.max(...totals);
+    const BAR_MAX_HEIGHT = 160;
+
+    // Bar + connector row
+    let barsHtml = '<div class="fv-wrap">';
+    steps.forEach((s,i) => {
+      const val = totals[i];
+      const barH = maxVal ? Math.max(8, Math.round(val/maxVal*BAR_MAX_HEIGHT)) : 8;
+      barsHtml += `<div class="fv-step">
+        <div class="fv-label">${s.label}</div>
+        <div class="fv-count">${fmt.n(val)}</div>
+        <div class="fv-bar-wrap"><div class="fv-bar${i===3?' highlighted':''}" style="height:${barH}px"></div></div>
+      </div>`;
+      if(i < steps.length-1){
+        const cr = totals[i] ? (totals[i+1]/totals[i]*100).toFixed(1) : '—';
+        barsHtml += `<div class="fv-connector" style="padding-bottom:0">
+          <div class="fv-arrow-box"><svg viewBox="0 0 24 24"><path d="M12 4l-1.4 1.4L16.2 11H4v2h12.2l-5.6 5.6L12 20l8-8z"/></svg></div>
+          <div class="fv-cr">${cr}%</div>
+          <div class="fv-cr-label">CR%</div>
+        </div>`;
+      }
+    });
+    barsHtml += '</div>';
+
+    // Drop-off row
+    let dropHtml = '<div class="fv-drop-row" style="margin-top:12px">';
+    steps.forEach((s,i) => {
+      const dropped = i < steps.length-1 ? totals[i] - totals[i+1] : null;
+      const dropPct = dropped!=null && totals[i] ? (dropped/totals[i]*100).toFixed(1) : null;
+      dropHtml += `<div class="fv-drop-step">`;
+      if(dropped!=null){
+        dropHtml += `
+          <div class="fv-drop-icon"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div>
+          <div class="fv-drop-n">${fmt.n(dropped)}</div>
+          <div class="fv-drop-label">dropped</div>
+          <div class="fv-drop-pct">${dropPct}%</div>`;
+      }
+      dropHtml += `</div>`;
+      if(i < steps.length-1) dropHtml += `<div class="fv-connector-spacer"></div>`;
+    });
+    dropHtml += '</div>';
+
+    document.getElementById('fn-funnel-viz').innerHTML = barsHtml + dropHtml;
+  }
+
   function render(){
     const df=fromEl.value||minD,dt=toEl.value||maxD;
     const filtered=isoWeeks(S.funnelData,df,dt);
@@ -1086,6 +1171,7 @@ function initFunnel(){
       <div class="pill"><div class="pl">ATC→Checkout</div><div class="pv">${totA?(totBC/totA*100).toFixed(1)+'%':'—'}</div></div>
       <div class="pill"><div class="pl">Checkout→Buy</div><div class="pv">${totBC?(totP/totBC*100).toFixed(1)+'%':'—'}</div></div>
       <div class="pill"><div class="pl">Ship→Purchase</div><div class="pv">${totSh?(totP/totSh*100).toFixed(1)+'%':'—'}</div></div>`;
+    renderFunnelViz(filtered);
     buildLineChart('fn-checkout',weeks,[{label:'Begin checkout',data:weeks.map(w=>g(w,'begin_checkout')),borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:2}],anns,'');
     buildLineChart('fn-dropoff',weeks,[
       {label:'Add shipping info %',data:weeks.map(w=>{const bc=g(w,'begin_checkout');return bc?+(g(w,'add_shipping_info')/bc*100).toFixed(2):null;}),borderColor:'#E67E22',tension:0.3,pointRadius:2,spanGaps:true},

@@ -172,8 +172,22 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
     <h1>Delivery Impact Analysis</h1>
     <div class="sub">Barker &amp; Stonehouse — how delivery cost changes affected performance</div>
   </div>
-  <div class="last-updated" id="lastUpdated">Loading…</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="last-updated" id="lastUpdated">Loading…</div>
+    <button id="settings-btn" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:rgba(255,255,255,0.7);padding:5px 10px;cursor:pointer;font-size:13px" title="Settings">⚙</button>
+  </div>
 </header>
+
+<!-- SETTINGS PANEL -->
+<div id="settings-panel" style="display:none;background:var(--navy-mid);border-bottom:1px solid rgba(255,255,255,0.1);padding:12px 32px">
+  <div style="max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <label style="color:rgba(255,255,255,0.7);font-size:12px;font-weight:600;white-space:nowrap">Anthropic API Key</label>
+    <input id="api-key-input" type="password" placeholder="sk-ant-..." style="flex:1;min-width:300px;max-width:500px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:6px 12px;font-size:13px;background:rgba(255,255,255,0.08);color:#fff;font-family:monospace">
+    <button id="api-key-save" style="background:var(--gold);border:none;border-radius:6px;padding:6px 16px;font-size:12px;font-weight:600;color:var(--navy);cursor:pointer">Save</button>
+    <span id="api-key-status" style="font-size:12px;color:rgba(255,255,255,0.5)"></span>
+    <span style="font-size:11px;color:rgba(255,255,255,0.4)">Used for the Ask AI feature. Stored in your browser only, never sent to any server.</span>
+  </div>
+</div>
 
 <div class="page-wrap">
 
@@ -214,9 +228,16 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
           <div class="drill-header">
             <div>
               <h2 id="story-cat-drill-title">Category breakdown</h2>
-              <div class="drill-sub">4-week avg before vs after · click a category to see products</div>
+              <div class="drill-sub">4-week avg before vs after · click a row to drill deeper</div>
             </div>
-            <button class="back-btn" id="story-cat-back">✕ Close</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:3px">
+                <button class="drill-level-btn active" data-level="category" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">Category</button>
+                <button class="drill-level-btn" data-level="subcategory" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Subcategory</button>
+                <button class="drill-level-btn" data-level="product" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Product</button>
+              </div>
+              <button class="back-btn" id="story-cat-back">✕ Close</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table class="data-table" id="story-cat-table">
@@ -605,6 +626,7 @@ async function initDashboard(){
 
     initNav();
     initStory();
+    initDrillLevelToggle();
     initOverview();
     initCategory();
     initSubcategory();
@@ -723,6 +745,16 @@ function renderStoryCatTable(){
       const av=Math.abs(a[S.storyCatSortCol]||0), bv=Math.abs(b[S.storyCatSortCol]||0);
       return S.storyCatSortDir==='desc'?bv-av:av-bv;
     });
+  // Reset thead for category view
+  document.querySelector('#story-cat-table thead tr').innerHTML = `
+    <th data-col="category">Category</th>
+    <th data-col="avg_rev_before" class="num">Rev before</th>
+    <th data-col="avg_rev_after" class="num">Rev after</th>
+    <th data-col="rev_pct_change" class="num">Rev Δ%</th>
+    <th data-col="avg_tx_before" class="num">Orders before</th>
+    <th data-col="avg_tx_after" class="num">Orders after</th>
+    <th data-col="tx_pct_change" class="num">Orders Δ%</th>
+    <th data-col="aov_pct_change" class="num">AOV Δ%</th>`;
   document.getElementById('story-cat-drill-title').textContent = S.selectedChange + ' — category breakdown';
   document.getElementById('story-cat-tbody').innerHTML = rows.map(r=>`
     <tr data-cat="${(r.category||'').replace(/"/g,'&quot;')}">
@@ -1288,8 +1320,127 @@ Answer questions directly and concisely. Use actual numbers from the data. Forma
   }
 }
 
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function initSettings(){
+  const btn = document.getElementById('settings-btn');
+  const panel = document.getElementById('settings-panel');
+  const input = document.getElementById('api-key-input');
+  const saveBtn = document.getElementById('api-key-save');
+  const status = document.getElementById('api-key-status');
+
+  // Load existing key
+  const existing = localStorage.getItem('anthropic_api_key');
+  if(existing){ input.value = existing; status.textContent = '✓ Key saved'; }
+
+  btn.addEventListener('click', () => {
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const key = input.value.trim();
+    if(key){ localStorage.setItem('anthropic_api_key', key); status.textContent = '✓ Saved'; status.style.color = '#6EE632'; }
+    else { localStorage.removeItem('anthropic_api_key'); status.textContent = 'Cleared'; status.style.color = 'rgba(255,255,255,0.4)'; }
+    setTimeout(() => { panel.style.display = 'none'; }, 800);
+  });
+
+  input.addEventListener('keydown', e => { if(e.key==='Enter') saveBtn.click(); });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRILL LEVEL TOGGLE
+// ═══════════════════════════════════════════════════════
+function initDrillLevelToggle(){
+  document.querySelectorAll('.drill-level-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.drill-level-btn').forEach(b => {
+        b.style.background = 'none'; b.style.color = 'var(--muted)'; b.style.fontWeight = '500';
+      });
+      btn.style.background = 'var(--navy)'; btn.style.color = '#fff'; btn.style.fontWeight = '600';
+      const level = btn.dataset.level;
+      if(level === 'category') renderStoryCatTable();
+      else if(level === 'subcategory') renderStorySubcatTable();
+      else if(level === 'product') renderStoryAllProductTable();
+    });
+  });
+}
+
+function renderStorySubcatTable(){
+  const rows = (S.impactSubcat||[])
+    .filter(d => d.change_label === S.selectedChange)
+    .sort((a,b) => Math.abs(b.rev_pct_change||0) - Math.abs(a.rev_pct_change||0));
+  document.getElementById('story-cat-drill-title').textContent = S.selectedChange + ' — subcategory breakdown';
+  document.getElementById('story-cat-tbody').innerHTML = rows.map(r => `
+    <tr data-cat="${(r.category||'').replace(/"/g,'&quot;')}" data-subcat="${(r.subcategory||'').replace(/"/g,'&quot;')}">
+      <td class="tag">${r.category||''}</td>
+      <td class="name">${r.subcategory||'(not set)'}</td>
+      <td class="num">${fmt.currency(r.avg_rev_before)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_after)}</td>
+      ${deltaCell(r.rev_pct_change)}
+      <td class="num">${r.avg_tx_before?Math.round(r.avg_tx_before):'—'}</td>
+      <td class="num">${r.avg_tx_after?Math.round(r.avg_tx_after):'—'}</td>
+      ${deltaCell(r.tx_pct_change)}
+      <td class="num">—</td>
+    </tr>`).join('');
+
+  // Update thead for subcategory view
+  document.querySelector('#story-cat-table thead tr').innerHTML = `
+    <th>Category</th><th>Subcategory</th>
+    <th class="num">Rev before</th><th class="num">Rev after</th><th class="num">Rev Δ%</th>
+    <th class="num">Orders before</th><th class="num">Orders after</th><th class="num">Orders Δ%</th><th class="num">AOV Δ%</th>`;
+
+  document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', () => {
+      document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(r => r.classList.remove('row-selected'));
+      row.classList.add('row-selected');
+      S.selectedCat = row.dataset.cat;
+      renderStoryProdTable(S.selectedCat);
+      document.getElementById('story-prod-drill').style.display = 'block';
+      document.getElementById('story-prod-drill').scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
+}
+
+function renderStoryAllProductTable(){
+  document.getElementById('story-cat-drill-title').textContent = S.selectedChange + ' — all products';
+  // Reset thead
+  document.querySelector('#story-cat-table thead tr').innerHTML = `
+    <th data-col="category">Category</th><th data-col="product_name">Product</th>
+    <th class="num">Rev before</th><th class="num">Rev after</th><th class="num">Rev Δ%</th>
+    <th class="num">Orders before</th><th class="num">Orders after</th><th class="num">Orders Δ%</th><th class="num">AOV Δ%</th>`;
+  const rows = (S.impactProduct||[])
+    .filter(d => d.change_label === S.selectedChange)
+    .sort((a,b) => Math.abs(b.rev_pct_change||0) - Math.abs(a.rev_pct_change||0))
+    .slice(0,100);
+  document.getElementById('story-cat-tbody').innerHTML = rows.map(r => `
+    <tr data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}">
+      <td class="tag">${r.category||''}</td>
+      <td class="name">${r.product_name||''}</td>
+      <td class="num">${fmt.currency(r.avg_rev_before)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_after)}</td>
+      ${deltaCell(r.rev_pct_change)}
+      <td class="num">${r.avg_tx_before?r.avg_tx_before.toFixed(1):'—'}</td>
+      <td class="num">${r.avg_tx_after?r.avg_tx_after.toFixed(1):'—'}</td>
+      ${deltaCell(r.tx_pct_change)}
+      <td class="num">—</td>
+    </tr>`).join('');
+
+  document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(row => {
+    row.addEventListener('click', () => {
+      document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(r => r.classList.remove('row-selected'));
+      row.classList.add('row-selected');
+      S.selectedProd = row.dataset.prod;
+      renderStoryTrendChart(S.selectedProd);
+      document.getElementById('story-prod-drill').style.display = 'block';
+      document.getElementById('story-prod-drill').scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
+}
+
 // ─── Boot
 initDashboard();
+initSettings();
 </script>
 </body>
 </html>

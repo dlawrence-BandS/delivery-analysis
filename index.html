@@ -477,9 +477,9 @@ const LINE_PALETTE  = ['#1A2A49','#C8A96E','#E67E22','#2D8A5F','#8E44AD','#C0392
 //  HELPERS
 // ═══════════════════════════════════════════════════════
 const fmt = {
-  £: v => v==null?'—':'£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}),
-  n: v => v==null?'—':Number(v).toLocaleString('en-GB'),
-  pct: v => v==null?'—':Number(v).toFixed(2)+'%',
+  currency: v => v==null?'\u2014':'\u00a3'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}),
+  n: v => v==null?'\u2014':Number(v).toLocaleString('en-GB'),
+  pct: v => v==null?'\u2014':Number(v).toFixed(2)+'%',
 };
 
 function isoWeeks(data,df,dt){
@@ -538,7 +538,7 @@ function buildLineChart(id,labels,datasets,anns,yLabel=''){
         legend:{position:'bottom',labels:{boxWidth:12,font:{size:11},padding:12}},
         tooltip:{callbacks:{label:ctx=>{
           const v=ctx.parsed.y;
-          if(yLabel==='£')return ` ${ctx.dataset.label}: ${fmt.£(v)}`;
+          if(yLabel==='£')return ` ${ctx.dataset.label}: ${fmt.currency(v)}`;
           if(yLabel==='%')return ` ${ctx.dataset.label}: ${fmt.pct(v)}`;
           return ` ${ctx.dataset.label}: ${fmt.n(v)}`;
         }}},
@@ -727,8 +727,8 @@ function renderStoryCatTable(){
   document.getElementById('story-cat-tbody').innerHTML = rows.map(r=>`
     <tr data-cat="${(r.category||'').replace(/"/g,'&quot;')}">
       <td class="name">${r.category||'(not set)'}</td>
-      <td class="num">${fmt.£(r.avg_rev_before)}</td>
-      <td class="num">${fmt.£(r.avg_rev_after)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_before)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_after)}</td>
       ${deltaCell(r.rev_pct_change)}
       <td class="num">${r.avg_tx_before?Math.round(r.avg_tx_before):'—'}</td>
       <td class="num">${r.avg_tx_after?Math.round(r.avg_tx_after):'—'}</td>
@@ -760,8 +760,8 @@ function renderStoryProdTable(cat){
   document.getElementById('story-prod-tbody').innerHTML = rows.map(r=>`
     <tr data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}">
       <td class="name">${r.product_name||'(unknown)'}</td>
-      <td class="num">${fmt.£(r.avg_rev_before)}</td>
-      <td class="num">${fmt.£(r.avg_rev_after)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_before)}</td>
+      <td class="num">${fmt.currency(r.avg_rev_after)}</td>
       ${deltaCell(r.rev_pct_change)}
       <td class="num">${r.avg_tx_before?r.avg_tx_before.toFixed(1):'—'}</td>
       <td class="num">${r.avg_tx_after?r.avg_tx_after.toFixed(1):'—'}</td>
@@ -825,7 +825,7 @@ function initOverview(){
     const totS=sw.reduce((s,r)=>s+(r.sessions||0),0);
     const avgC=totS?(totT/totS*100).toFixed(2):'—';
     document.getElementById('ov-pills').innerHTML=`
-      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.£(totR)}</div><div class="ps">selected period</div></div>
+      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.currency(totR)}</div><div class="ps">selected period</div></div>
       <div class="pill"><div class="pl">Orders</div><div class="pv">${fmt.n(totT)}</div><div class="ps">transactions</div></div>
       <div class="pill"><div class="pl">Sessions</div><div class="pv">${fmt.n(totS)}</div><div class="ps">unique sessions</div></div>
       <div class="pill"><div class="pl">CVR</div><div class="pv">${avgC}%</div><div class="ps">avg conversion</div></div>`;
@@ -893,7 +893,7 @@ function initCategory(){
       if(r.cvr!=null){e._cs+=r.cvr;e._cn++;}
     });
     const rows=Object.values(agg).map(r=>({...r,cvr:r._cn?+(r._cs/r._cn).toFixed(3):0})).sort((a,b)=>{const av=a[S.catSortCol]||0,bv=b[S.catSortCol]||0;return S.catSortDir==='desc'?bv-av:av-bv;});
-    document.getElementById('cat-tbody').innerHTML=rows.map(r=>`<tr><td class="name">${r.category||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
+    document.getElementById('cat-tbody').innerHTML=rows.map(r=>`<tr><td class="name">${r.category||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.currency(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
   }
 
   makeSortableTable('cat-table','catSortCol','catSortDir',render);
@@ -945,7 +945,7 @@ function initSubcategory(){
       if(r.cvr!=null){e._cs+=r.cvr;e._cn++;}
     });
     const rows=Object.values(agg).map(r=>({...r,cvr:r._cn?+(r._cs/r._cn).toFixed(3):0})).sort((a,b)=>{const av=a[S.subcatSortCol]||0,bv=b[S.subcatSortCol]||0;return S.subcatSortDir==='desc'?bv-av:av-bv;});
-    document.getElementById('subcat-tbody').innerHTML=rows.map(r=>`<tr><td class="tag">${r.category||''}</td><td class="name">${r.subcategory||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
+    document.getElementById('subcat-tbody').innerHTML=rows.map(r=>`<tr><td class="tag">${r.category||''}</td><td class="name">${r.subcategory||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.currency(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
   }
 
   makeSortableTable('subcat-table','subcatSortCol','subcatSortDir',render);
@@ -981,7 +981,7 @@ function initProduct(){
     });
     const rows=Object.values(pm).map(r=>({...r,pdp_cvr:r._pvn?+(r._pvs/r._pvn).toFixed(3):0})).sort((a,b)=>{const av=a[S.prodSortCol]||0,bv=b[S.prodSortCol]||0;return S.prodSortDir==='desc'?bv-av:av-bv;}).slice(0,200);
     document.getElementById('prod-count').textContent=`Top ${rows.length} products`;
-    document.getElementById('prod-tbody').innerHTML=rows.map(r=>`<tr style="cursor:pointer" data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}"><td class="name">${r.product_name||''}</td><td class="tag">${r.category||''}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.n(r.units_sold)}</td><td class="num">${fmt.n(r.add_to_cart)}</td><td class="num">${fmt.pct(r.pdp_cvr)}</td></tr>`).join('');
+    document.getElementById('prod-tbody').innerHTML=rows.map(r=>`<tr style="cursor:pointer" data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}"><td class="name">${r.product_name||''}</td><td class="tag">${r.category||''}</td><td class="num">${fmt.currency(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.n(r.units_sold)}</td><td class="num">${fmt.n(r.add_to_cart)}</td><td class="num">${fmt.pct(r.pdp_cvr)}</td></tr>`).join('');
     document.getElementById('prod-tbody').querySelectorAll('tr').forEach(row=>{
       row.addEventListener('click',()=>{
         document.getElementById('prod-tbody').querySelectorAll('tr').forEach(r=>r.style.background='');
@@ -1082,8 +1082,8 @@ function initAOV(){
     const totR=isoWeeks(S.aovData,df,dt).reduce((s,r)=>s+(r.revenue||0),0);
     const totT=isoWeeks(S.aovData,df,dt).reduce((s,r)=>s+(r.transactions||0),0);
     document.getElementById('aov-pills').innerHTML=`
-      <div class="pill"><div class="pl">Site AOV</div><div class="pv">${totT?fmt.£(totR/totT):'—'}</div></div>
-      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.£(totR)}</div></div>
+      <div class="pill"><div class="pl">Site AOV</div><div class="pv">${totT?fmt.currency(totR/totT):'—'}</div></div>
+      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.currency(totR)}</div></div>
       <div class="pill"><div class="pl">Orders</div><div class="pv">${fmt.n(totT)}</div></div>`;
     const catsToShow=cat?[cat]:[...new Set(filtered.map(d=>d.category).filter(Boolean))].map(c=>({c,rev:filtered.filter(r=>r.category===c).reduce((s,r)=>s+(r.revenue||0),0)})).sort((a,b)=>b.rev-a.rev).slice(0,8).map(x=>x.c);
     const datasets=catsToShow.map((c,i)=>{

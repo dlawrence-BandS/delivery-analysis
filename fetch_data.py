@@ -433,6 +433,123 @@ WHERE avg_rev_before IS NOT NULL AND avg_rev_after IS NOT NULL
 ORDER BY change_label, avg_rev_after DESC
 """
 
+
+CHANGE_IMPACT_SUBCAT_QUERY = f"""
+WITH purchase_items AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_category  AS category,
+    item.item_category2 AS subcategory,
+    ecommerce.transaction_id AS transaction_id,
+    item.price * item.quantity AS item_revenue
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name = 'purchase'
+    AND item.item_category2 IS NOT NULL AND item.item_category2 != ''
+),
+weekly_agg AS (
+  SELECT week, category, subcategory,
+    COUNT(DISTINCT transaction_id) AS transactions,
+    ROUND(SUM(item_revenue), 2) AS revenue
+  FROM purchase_items
+  GROUP BY 1,2,3
+),
+change_dates AS (
+  SELECT change_date, change_label FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  ])
+),
+before_after AS (
+  SELECT
+    cd.change_label,
+    wa.category,
+    wa.subcategory,
+    AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.revenue END) AS avg_rev_before,
+    AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.revenue END) AS avg_rev_after,
+    AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_before,
+    AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_after
+  FROM change_dates cd CROSS JOIN weekly_agg wa
+  GROUP BY 1,2,3
+)
+SELECT
+  change_label, category, subcategory,
+  ROUND(avg_rev_before, 2) AS avg_rev_before,
+  ROUND(avg_rev_after, 2)  AS avg_rev_after,
+  ROUND(SAFE_DIVIDE(avg_rev_after - avg_rev_before, avg_rev_before) * 100, 1) AS rev_pct_change,
+  ROUND(avg_tx_before, 1)  AS avg_tx_before,
+  ROUND(avg_tx_after, 1)   AS avg_tx_after,
+  ROUND(SAFE_DIVIDE(avg_tx_after - avg_tx_before, avg_tx_before) * 100, 1) AS tx_pct_change
+FROM before_after
+WHERE avg_rev_before IS NOT NULL AND avg_rev_after IS NOT NULL
+ORDER BY change_label, category, avg_rev_after DESC
+"""
+
+CHANGE_IMPACT_PRODUCT_QUERY = f"""
+WITH purchase_items AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_name      AS product_name,
+    item.item_category  AS category,
+    item.item_category2 AS subcategory,
+    ecommerce.transaction_id AS transaction_id,
+    item.price * item.quantity AS item_revenue,
+    item.quantity AS quantity
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name = 'purchase'
+    AND item.item_name IS NOT NULL
+),
+weekly_agg AS (
+  SELECT week, product_name, category, subcategory,
+    COUNT(DISTINCT transaction_id) AS transactions,
+    ROUND(SUM(item_revenue), 2) AS revenue,
+    ROUND(AVG(quantity), 2) AS avg_units
+  FROM purchase_items
+  GROUP BY 1,2,3,4
+),
+top_products AS (
+  SELECT product_name FROM weekly_agg
+  GROUP BY product_name ORDER BY SUM(revenue) DESC LIMIT 300
+),
+change_dates AS (
+  SELECT change_date, change_label FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  ])
+),
+before_after AS (
+  SELECT
+    cd.change_label, wa.product_name, wa.category, wa.subcategory,
+    AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.revenue END) AS avg_rev_before,
+    AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.revenue END) AS avg_rev_after,
+    AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_before,
+    AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_after,
+    AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.avg_units END) AS avg_units_before,
+    AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.avg_units END) AS avg_units_after
+  FROM change_dates cd CROSS JOIN weekly_agg wa
+  JOIN top_products tp USING (product_name)
+  GROUP BY 1,2,3,4
+)
+SELECT
+  change_label, product_name, category, subcategory,
+  ROUND(avg_rev_before, 2) AS avg_rev_before,
+  ROUND(avg_rev_after, 2)  AS avg_rev_after,
+  ROUND(SAFE_DIVIDE(avg_rev_after - avg_rev_before, avg_rev_before) * 100, 1) AS rev_pct_change,
+  ROUND(avg_tx_before, 1)  AS avg_tx_before,
+  ROUND(avg_tx_after, 1)   AS avg_tx_after,
+  ROUND(SAFE_DIVIDE(avg_tx_after - avg_tx_before, avg_tx_before) * 100, 1) AS tx_pct_change,
+  ROUND(avg_units_before, 2) AS avg_units_before,
+  ROUND(avg_units_after, 2)  AS avg_units_after
+FROM before_after
+WHERE avg_rev_before IS NOT NULL AND avg_rev_after IS NOT NULL
+ORDER BY change_label, category, avg_rev_after DESC
+"""
+
 # ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 def run_query(client: bigquery.Client, sql: str, label: str) -> list[dict]:
@@ -503,6 +620,14 @@ def main():
     print("\nFetching change impact summary...")
     impact_data = run_query(client, CHANGE_IMPACT_QUERY, "change impact")
     write_json(OUTPUT_DIR / "change_impact.json", impact_data)
+
+    print("\nFetching change impact by subcategory...")
+    impact_subcat = run_query(client, CHANGE_IMPACT_SUBCAT_QUERY, "change impact subcategory")
+    write_json(OUTPUT_DIR / "change_impact_subcat.json", impact_subcat)
+
+    print("\nFetching change impact by product...")
+    impact_product = run_query(client, CHANGE_IMPACT_PRODUCT_QUERY, "change impact product")
+    write_json(OUTPUT_DIR / "change_impact_product.json", impact_product)
 
     print("\nWriting meta...")
     meta = {

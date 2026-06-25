@@ -7,460 +7,162 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
 <style>
-  :root {
-    --navy:    #1A2A49;
-    --navy-mid:#243558;
-    --gold:    #C8A96E;
-    --gold-lt: #E8D5A8;
-    --bg:      #F7F6F3;
-    --surface: #FFFFFF;
-    --border:  #E2DDD6;
-    --text:    #1A2A49;
-    --muted:   #7A8BA0;
-    --positive:#2D8A5F;
-    --negative:#C0392B;
-    --neutral: #5A6A7A;
+:root {
+  --navy:#1A2A49; --navy-mid:#243558; --gold:#C8A96E; --gold-lt:#E8D5A8;
+  --bg:#F7F6F3; --surface:#FFFFFF; --border:#E2DDD6;
+  --text:#1A2A49; --muted:#7A8BA0;
+  --pos:#2D8A5F; --neg:#C0392B;
+  --c0:#E67E22; --c1:#8E44AD; --c2:#C0392B; --c3:#0D7377; --c4:#1A2A49;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5}
 
-    /* change annotation colours */
-    --ann1: #E67E22;
-    --ann2: #8E44AD;
-    --ann3: #C0392B;
-    --ann4: #16A085;
-    --ann5: #2980B9;
-  }
+/* HEADER */
+.site-header{background:var(--navy);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.site-header h1{color:var(--gold);font-size:17px;font-weight:600;letter-spacing:.02em}
+.site-header .sub{color:rgba(255,255,255,.5);font-size:11px;margin-top:2px}
+.last-updated{color:rgba(255,255,255,.4);font-size:11px;text-align:right}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* LAYOUT */
+.page-wrap{max-width:1400px;margin:0 auto;padding:24px 24px 80px}
 
-  body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.5;
-  }
+/* NAV */
+.main-nav{display:flex;gap:2px;border-bottom:2px solid var(--border);margin-bottom:28px;overflow-x:auto;scrollbar-width:none}
+.main-nav::-webkit-scrollbar{display:none}
+.nav-btn{background:none;border:none;padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s}
+.nav-btn:hover{color:var(--navy)}
+.nav-btn.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:700}
+.tab-panel{display:none}.tab-panel.active{display:block}
 
-  /* ── HEADER ── */
-  .site-header {
-    background: var(--navy);
-    padding: 20px 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-  }
-  .site-header h1 {
-    color: var(--gold);
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-  }
-  .site-header .subtitle {
-    color: rgba(255,255,255,0.55);
-    font-size: 12px;
-    margin-top: 2px;
-  }
-  .last-updated {
-    color: rgba(255,255,255,0.4);
-    font-size: 11px;
-    text-align: right;
-  }
+/* LOADING */
+.loading-state{text-align:center;padding:80px 24px;color:var(--muted)}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-box{background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:20px 24px;color:#991B1B;margin:24px 0}
+.error-box code{display:block;font-size:12px;margin-top:8px;opacity:.7;font-family:monospace}
 
-  /* ── LAYOUT ── */
-  .page-wrap {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 24px 24px 64px;
-  }
+/* STORY CARDS */
+.change-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:28px}
+.change-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.change-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.change-card.c0::before{background:var(--c0)}.change-card.c1::before{background:var(--c1)}.change-card.c2::before{background:var(--c2)}
+.change-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.change-card.selected{box-shadow:0 0 0 2px var(--navy),0 8px 24px rgba(0,0,0,.1)}
+.change-card .card-date{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.change-card .card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.change-card .card-detail{font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.5}
+.card-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.card-metric{background:var(--bg);border-radius:8px;padding:8px 10px;text-align:center}
+.card-metric .cm-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.card-metric .cm-val{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.cm-val.pos{color:var(--pos)}.cm-val.neg{color:var(--neg)}.cm-val.neu{color:var(--muted)}
+.card-metric .cm-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.change-card .expand-hint{font-size:11px;color:var(--muted);margin-top:12px;text-align:center}
 
-  /* ── LOADING / ERROR ── */
-  .loading-state {
-    text-align: center;
-    padding: 80px 24px;
-    color: var(--muted);
-  }
-  .loading-state .spinner {
-    width: 36px; height: 36px;
-    border: 3px solid var(--border);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .error-state {
-    background: #FEF2F2;
-    border: 1px solid #FECACA;
-    border-radius: 8px;
-    padding: 20px 24px;
-    color: #991B1B;
-    margin: 24px 0;
-  }
-  .error-state code {
-    display: block;
-    font-size: 12px;
-    margin-top: 8px;
-    opacity: 0.7;
-    font-family: monospace;
-  }
+/* DRILL DOWN */
+.drill-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:20px;overflow:hidden}
+.drill-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.drill-header h2{font-size:14px;font-weight:700;color:var(--navy)}
+.drill-header .drill-sub{font-size:12px;color:var(--muted)}
+.back-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--muted);cursor:pointer}
+.back-btn:hover{border-color:var(--navy);color:var(--navy)}
 
-  /* ── SECTION HEADERS ── */
-  .section-header {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin: 36px 0 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--navy);
-  }
-  .section-header h2 {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--navy);
-    letter-spacing: 0.01em;
-  }
-  .section-header .section-note {
-    font-size: 12px;
-    color: var(--muted);
-  }
+/* TABLES */
+.table-wrap{overflow-x:auto;max-height:480px;overflow-y:auto}
+table.data-table{width:100%;border-collapse:collapse;font-size:12px}
+table.data-table th{background:var(--navy);color:rgba(255,255,255,.85);padding:9px 14px;text-align:left;font-weight:600;font-size:11px;letter-spacing:.04em;position:sticky;top:0;cursor:pointer;white-space:nowrap;user-select:none}
+table.data-table th:hover{background:var(--navy-mid)}
+table.data-table th.sort-desc::after{content:' ▼';opacity:.7}
+table.data-table th.sort-asc::after{content:' ▲';opacity:.7}
+table.data-table td{padding:8px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+table.data-table tr{cursor:pointer}
+table.data-table tr:hover td{background:#F5F2EE}
+table.data-table tr.row-selected td{background:#E8D5A8}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.name{font-weight:500}
+td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;color:var(--muted);font-weight:500}
+.delta-pos{color:var(--pos);font-weight:700}
+.delta-neg{color:var(--neg);font-weight:700}
 
-  /* ── FILTERS ── */
-  .filters-bar {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    align-items: flex-end;
-    margin-bottom: 24px;
-  }
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .filter-group label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-  .filter-group select, .filter-group input[type="date"] {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 10px;
-    font-size: 13px;
-    color: var(--text);
-    background: var(--bg);
-    min-width: 160px;
-    cursor: pointer;
-  }
-  .filter-group select:focus, .filter-group input:focus {
-    outline: 2px solid var(--gold);
-    outline-offset: 1px;
-  }
-  .btn-reset {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 14px;
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
-    align-self: flex-end;
-  }
-  .btn-reset:hover { border-color: var(--navy); color: var(--navy); }
+/* CHART */
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 20px 16px;margin-bottom:20px}
+.chart-card h3{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:3px}
+.chart-card .chart-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+.chart-wrap{position:relative;height:280px}
+.chart-wrap.tall{height:340px}
+.metric-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px}
+.m-tab{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
+.m-tab:hover{border-color:var(--navy);color:var(--navy)}
+.m-tab.active{background:var(--navy);border-color:var(--navy);color:#fff}
 
-  /* ── METRIC SELECTOR ── */
-  .metric-tabs {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-  .metric-tab {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .metric-tab:hover { border-color: var(--navy); color: var(--navy); }
-  .metric-tab.active {
-    background: var(--navy);
-    border-color: var(--navy);
-    color: #fff;
-  }
+/* FILTERS */
+.filters-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-bottom:20px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.fg select,.fg input{border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;color:var(--text);background:var(--bg);min-width:150px}
+.fg select:focus,.fg input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.btn-sm{background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;align-self:flex-end}
+.btn-sm:hover{border-color:var(--navy);color:var(--navy)}
 
-  /* ── CHART CARDS ── */
-  .chart-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
-    gap: 20px;
-  }
-  .chart-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 20px 20px 16px;
-  }
-  .chart-card.full-width {
-    grid-column: 1 / -1;
-  }
-  .chart-card h3 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--navy);
-    margin-bottom: 4px;
-  }
-  .chart-card .chart-meta {
-    font-size: 11px;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
-  .chart-wrap {
-    position: relative;
-    height: 280px;
-  }
-  .chart-wrap.tall { height: 340px; }
+/* STAT PILLS */
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.pill{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 16px;min-width:110px}
+.pill .pl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
+.pill .pv{font-size:20px;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.pill .ps{font-size:11px;color:var(--muted);margin-top:2px}
 
-  /* ── CHANGE LEGEND ── */
-  .change-legend {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 20px;
-    margin-bottom: 24px;
-  }
-  .change-legend h3 {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    margin-bottom: 12px;
-  }
-  .change-legend-items {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .change-legend-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    flex: 1;
-    min-width: 200px;
-  }
-  .change-dot {
-    width: 3px;
-    min-width: 3px;
-    height: 36px;
-    border-radius: 2px;
-    margin-top: 2px;
-  }
-  .change-legend-item .change-info strong {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .change-legend-item .change-info span {
-    font-size: 11px;
-    color: var(--muted);
-  }
+/* DELIVERY STRUCTURE */
+.delivery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:28px}
+.delivery-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.delivery-card .dc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.delivery-card .dc-tier{font-size:13px;font-weight:700;color:var(--navy)}
+.delivery-card .dc-price{font-size:22px;font-weight:800;color:var(--navy)}
+.delivery-card .dc-carrier{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.delivery-card .dc-examples{font-size:11px;color:var(--muted);line-height:1.5}
 
-  /* ── FUNNEL ── */
-  .funnel-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .funnel-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .funnel-label {
-    width: 140px;
-    font-size: 12px;
-    color: var(--muted);
-    text-align: right;
-    flex-shrink: 0;
-  }
-  .funnel-bar-wrap {
-    flex: 1;
-    background: var(--bg);
-    border-radius: 4px;
-    height: 28px;
-    position: relative;
-    overflow: hidden;
-  }
-  .funnel-bar {
-    height: 100%;
-    background: var(--navy);
-    border-radius: 4px;
-    transition: width 0.4s ease;
-    display: flex;
-    align-items: center;
-    padding-left: 10px;
-    min-width: 2px;
-  }
-  .funnel-bar-val {
-    font-size: 11px;
-    color: #fff;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .funnel-pct {
-    width: 52px;
-    font-size: 11px;
-    color: var(--muted);
-    flex-shrink: 0;
-  }
+/* SECTION HEADER */
+.section-hdr{display:flex;align-items:baseline;gap:10px;margin:28px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--navy)}
+.section-hdr h2{font-size:15px;font-weight:700;color:var(--navy)}
+.section-hdr span{font-size:12px;color:var(--muted)}
 
-  /* ── DRILL TABLE ── */
-  .drill-table-wrap {
-    overflow-x: auto;
-    margin-top: 8px;
-  }
-  .drill-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  .drill-table th {
-    background: var(--navy);
-    color: rgba(255,255,255,0.85);
-    padding: 8px 12px;
-    text-align: left;
-    font-weight: 600;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    position: sticky;
-    top: 0;
-    cursor: pointer;
-    white-space: nowrap;
-    user-select: none;
-  }
-  .drill-table th:hover { background: var(--navy-mid); }
-  .drill-table th.sort-asc::after  { content: ' ▲'; opacity: 0.7; }
-  .drill-table th.sort-desc::after { content: ' ▼'; opacity: 0.7; }
-  .drill-table td {
-    padding: 7px 12px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    white-space: nowrap;
-  }
-  .drill-table tr:hover td { background: #F0EDE8; }
-  .drill-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  .drill-table td.name { font-weight: 500; }
-  .drill-table td.cat-tag {
-    font-size: 10px;
-    background: var(--bg);
-    border-radius: 4px;
-    padding: 2px 6px;
-    color: var(--muted);
-    font-weight: 500;
-  }
-  .delta-pos { color: var(--positive); font-weight: 600; }
-  .delta-neg { color: var(--negative); font-weight: 600; }
+/* CHANGE LEGEND */
+.change-legend{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:20px}
+.change-legend h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px}
+.legend-items{display:flex;flex-wrap:wrap;gap:10px}
+.legend-item{display:flex;align-items:flex-start;gap:8px;flex:1;min-width:200px}
+.legend-dot{width:3px;min-width:3px;height:36px;border-radius:2px;margin-top:2px}
+.legend-item strong{display:block;font-size:12px;font-weight:600;color:var(--text)}
+.legend-item span{font-size:11px;color:var(--muted)}
 
-  /* ── TABS (section nav) ── */
-  .nav-tabs {
-    display: flex;
-    gap: 2px;
-    border-bottom: 2px solid var(--border);
-    margin-bottom: 24px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-  .nav-tab {
-    background: none;
-    border: none;
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    white-space: nowrap;
-    transition: all 0.15s;
-  }
-  .nav-tab:hover { color: var(--navy); }
-  .nav-tab.active {
-    color: var(--navy);
-    border-bottom-color: var(--gold);
-    font-weight: 700;
-  }
+/* AI PANEL */
+.ai-fab{position:fixed;bottom:28px;right:28px;background:var(--navy);color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.25);z-index:200;display:flex;align-items:center;gap:8px;transition:all .2s}
+.ai-fab:hover{background:var(--navy-mid);transform:translateY(-2px)}
+.ai-panel{position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--surface);border-left:1px solid var(--border);z-index:300;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s ease;box-shadow:-4px 0 24px rgba(0,0,0,.12)}
+.ai-panel.open{transform:translateX(0)}
+.ai-panel-header{background:var(--navy);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.ai-panel-header h3{color:var(--gold);font-size:14px;font-weight:600}
+.ai-close{background:none;border:none;color:rgba(255,255,255,.6);font-size:20px;cursor:pointer;line-height:1}
+.ai-close:hover{color:#fff}
+.ai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.ai-msg{max-width:90%;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.6}
+.ai-msg.user{background:var(--navy);color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px}
+.ai-msg.assistant{background:var(--bg);color:var(--text);align-self:flex-start;border-radius:10px 10px 10px 2px;border:1px solid var(--border)}
+.ai-msg.thinking{color:var(--muted);font-style:italic}
+.ai-input-row{padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.ai-input{flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;resize:none;height:40px;overflow:hidden}
+.ai-input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.ai-send{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer}
+.ai-send:hover{background:var(--navy-mid)}
+.ai-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px}
+.ai-sug{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--muted);cursor:pointer;transition:all .15s}
+.ai-sug:hover{border-color:var(--navy);color:var(--navy)}
 
-  /* ── TAB PANELS ── */
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  /* ── SEARCH ── */
-  .search-bar {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 7px 12px;
-    font-size: 13px;
-    width: 280px;
-    background: var(--bg);
-  }
-  .search-bar:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
-
-  /* ── INLINE STAT PILLS ── */
-  .stat-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-  .stat-pill {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 16px;
-    min-width: 120px;
-  }
-  .stat-pill .pill-label {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    margin-bottom: 4px;
-  }
-  .stat-pill .pill-val {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--navy);
-    letter-spacing: -0.02em;
-  }
-  .stat-pill .pill-sub {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    .chart-grid { grid-template-columns: 1fr; }
-    .page-wrap { padding: 16px 12px 48px; }
-    .site-header { padding: 14px 16px; }
-    .chart-wrap { height: 220px; }
-  }
+@media(max-width:768px){
+  .page-wrap{padding:14px 12px 80px}
+  .site-header{padding:12px 16px}
+  .ai-panel{width:100%}
+  .change-cards{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
@@ -468,549 +170,441 @@
 <header class="site-header">
   <div>
     <h1>Delivery Impact Analysis</h1>
-    <div class="subtitle">Barker &amp; Stonehouse — weekly performance vs delivery cost changes</div>
+    <div class="sub">Barker &amp; Stonehouse — how delivery cost changes affected performance</div>
   </div>
   <div class="last-updated" id="lastUpdated">Loading…</div>
 </header>
 
 <div class="page-wrap">
 
-  <!-- Loading state -->
   <div class="loading-state" id="loadingState">
     <div class="spinner"></div>
     <div>Loading data…</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;">Run fetch_data.py to generate the data/ files</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Run fetch_data.py to generate the data/ files</div>
   </div>
 
-  <!-- Main content (hidden until data loads) -->
   <div id="mainContent" style="display:none">
 
-    <!-- Delivery change legend -->
-    <div class="change-legend" id="changeLegend">
-      <h3>Delivery cost changes — plotted on all charts</h3>
-      <div class="change-legend-items" id="changeLegendItems"></div>
+    <!-- MAIN NAV -->
+    <div class="main-nav">
+      <button class="nav-btn active" data-panel="story">Impact Summary</button>
+      <button class="nav-btn" data-panel="overview">Explorer — Overview</button>
+      <button class="nav-btn" data-panel="category">By Category</button>
+      <button class="nav-btn" data-panel="subcategory">By Subcategory</button>
+      <button class="nav-btn" data-panel="product">By Product</button>
+      <button class="nav-btn" data-panel="funnel">Checkout Funnel</button>
+      <button class="nav-btn" data-panel="aov">AOV</button>
+      <button class="nav-btn" data-panel="units">Units per Transaction</button>
+      <button class="nav-btn" data-panel="delivery">Delivery Structure</button>
     </div>
 
-    <!-- NAV TABS -->
-    <div class="nav-tabs">
-      <button class="nav-tab active" data-panel="overview">Overview</button>
-      <button class="nav-tab" data-panel="category">By Category</button>
-      <button class="nav-tab" data-panel="subcategory">By Subcategory</button>
-      <button class="nav-tab" data-panel="product">By Product</button>
-      <button class="nav-tab" data-panel="funnel">Checkout Funnel</button>
-      <button class="nav-tab" data-panel="aov">AOV</button>
-      <button class="nav-tab" data-panel="units">Units per Transaction</button>
-      <button class="nav-tab" data-panel="impact">Change Impact</button>
-      <button class="nav-tab" data-panel="delivery">Delivery Structure</button>
-    </div>
+    <!-- ══════════════════════ IMPACT SUMMARY (story-first) ══════════════════════ -->
+    <div class="tab-panel active" id="panel-story">
 
-    <!-- ════════════════════════════════ OVERVIEW ══════════════════════════════ -->
-    <div class="tab-panel active" id="panel-overview">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+        Your data covers <strong id="story-date-range"></strong>. There are <strong>3 delivery cost changes</strong> in this period. Click a change to see which categories and products were most affected.
+      </p>
 
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="ov-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="ov-dateTo">
-        </div>
-        <button class="btn-reset" id="ov-reset">Reset dates</button>
-      </div>
+      <!-- 3 change cards -->
+      <div class="change-cards" id="story-cards"></div>
 
-      <div class="stat-pills" id="ov-pills"></div>
-
-      <div class="metric-tabs" id="ov-metric-tabs">
-        <button class="metric-tab active" data-metric="revenue">Revenue</button>
-        <button class="metric-tab" data-metric="transactions">Transactions</button>
-        <button class="metric-tab" data-metric="sessions">Sessions</button>
-        <button class="metric-tab" data-metric="cvr">Conv. Rate %</button>
-        <button class="metric-tab" data-metric="add_to_cart">Add to Cart</button>
-      </div>
-
-      <div class="chart-grid">
-        <div class="chart-card full-width">
-          <h3>Site-wide weekly trend</h3>
-          <div class="chart-meta">All categories combined · annotated with delivery cost changes</div>
-          <div class="chart-wrap tall"><canvas id="ov-sitewide-chart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>Top 10 categories — revenue contribution</h3>
-          <div class="chart-meta">Latest 12 weeks</div>
-          <div class="chart-wrap"><canvas id="ov-cat-bar-chart"></canvas></div>
-        </div>
-        <div class="chart-card">
-          <h3>Conversion rate by week</h3>
-          <div class="chart-meta">Site-wide CVR % with change annotations</div>
-          <div class="chart-wrap"><canvas id="ov-cvr-chart"></canvas></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ CATEGORY ══════════════════════════════ -->
-    <div class="tab-panel" id="panel-category">
-
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Category</label>
-          <select id="cat-select"><option value="">All categories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Metric</label>
-          <select id="cat-metric-select">
-            <option value="revenue">Revenue</option>
-            <option value="transactions">Transactions</option>
-            <option value="sessions">Sessions</option>
-            <option value="cvr">Conv. Rate %</option>
-            <option value="add_to_cart">Add to Cart</option>
-            <option value="began_checkout">Began Checkout</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="cat-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="cat-dateTo">
-        </div>
-        <button class="btn-reset" id="cat-reset">Reset</button>
-      </div>
-
-      <div class="chart-grid">
-        <div class="chart-card full-width">
-          <h3 id="cat-chart-title">Category weekly trend</h3>
-          <div class="chart-meta">Select a category above to isolate, or view all overlaid</div>
-          <div class="chart-wrap tall"><canvas id="cat-trend-chart"></canvas></div>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <h2>Category summary table</h2>
-        <span class="section-note">Click column headers to sort</span>
-      </div>
-      <div class="chart-card" style="padding:0">
-        <div class="drill-table-wrap" style="max-height:500px;overflow-y:auto">
-          <table class="drill-table" id="cat-table">
-            <thead>
-              <tr>
-                <th data-col="category">Category</th>
-                <th data-col="sessions" class="num">Sessions</th>
-                <th data-col="revenue" class="num">Revenue</th>
-                <th data-col="transactions" class="num">Orders</th>
-                <th data-col="cvr" class="num">CVR %</th>
-                <th data-col="add_to_cart" class="num">ATC</th>
-              </tr>
-            </thead>
-            <tbody id="cat-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ SUBCATEGORY ════════════════════════════ -->
-    <div class="tab-panel" id="panel-subcategory">
-
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Parent category</label>
-          <select id="subcat-cat-select"><option value="">All</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Subcategory</label>
-          <select id="subcat-select"><option value="">All subcategories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Metric</label>
-          <select id="subcat-metric-select">
-            <option value="revenue">Revenue</option>
-            <option value="transactions">Transactions</option>
-            <option value="sessions">Sessions</option>
-            <option value="cvr">Conv. Rate %</option>
-            <option value="add_to_cart">Add to Cart</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="subcat-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="subcat-dateTo">
-        </div>
-        <button class="btn-reset" id="subcat-reset">Reset</button>
-      </div>
-
-      <div class="chart-grid">
-        <div class="chart-card full-width">
-          <h3 id="subcat-chart-title">Subcategory weekly trend</h3>
-          <div class="chart-meta">Up to 8 subcategories shown; select parent category to filter</div>
-          <div class="chart-wrap tall"><canvas id="subcat-trend-chart"></canvas></div>
-        </div>
-      </div>
-
-      <div class="section-header"><h2>Subcategory summary table</h2></div>
-      <div class="chart-card" style="padding:0">
-        <div class="drill-table-wrap" style="max-height:500px;overflow-y:auto">
-          <table class="drill-table" id="subcat-table">
-            <thead>
-              <tr>
-                <th data-col="category">Category</th>
-                <th data-col="subcategory">Subcategory</th>
-                <th data-col="sessions" class="num">Sessions</th>
-                <th data-col="revenue" class="num">Revenue</th>
-                <th data-col="transactions" class="num">Orders</th>
-                <th data-col="cvr" class="num">CVR %</th>
-                <th data-col="add_to_cart" class="num">ATC</th>
-              </tr>
-            </thead>
-            <tbody id="subcat-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ PRODUCT ════════════════════════════════ -->
-    <div class="tab-panel" id="panel-product">
-
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Category</label>
-          <select id="prod-cat-select"><option value="">All categories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Search product</label>
-          <input type="text" class="search-bar" id="prod-search" placeholder="Type product name…">
-        </div>
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="prod-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="prod-dateTo">
-        </div>
-        <button class="btn-reset" id="prod-reset">Reset</button>
-      </div>
-
-      <div class="chart-grid" id="prod-chart-grid">
-        <div class="chart-card full-width" id="prod-chart-card" style="display:none">
-          <h3 id="prod-chart-title">Product weekly trend</h3>
-          <div class="chart-meta">Click a product row to chart its weekly performance</div>
-          <div class="metric-tabs" id="prod-metric-tabs">
-            <button class="metric-tab active" data-metric="revenue">Revenue</button>
-            <button class="metric-tab" data-metric="transactions">Transactions</button>
-            <button class="metric-tab" data-metric="units_sold">Units Sold</button>
-            <button class="metric-tab" data-metric="pdp_cvr">PDP CVR %</button>
-            <button class="metric-tab" data-metric="add_to_cart">Add to Cart</button>
+      <!-- Category drill-down (shown when a card is selected) -->
+      <div id="story-cat-drill" style="display:none">
+        <div class="drill-section">
+          <div class="drill-header">
+            <div>
+              <h2 id="story-cat-drill-title">Category breakdown</h2>
+              <div class="drill-sub">4-week avg before vs after · click a category to see products</div>
+            </div>
+            <button class="back-btn" id="story-cat-back">✕ Close</button>
           </div>
-          <div class="chart-wrap"><canvas id="prod-trend-chart"></canvas></div>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <h2>Product table</h2>
-        <span class="section-note" id="prod-count"></span>
-      </div>
-      <div class="chart-card" style="padding:0">
-        <div class="drill-table-wrap" style="max-height:600px;overflow-y:auto">
-          <table class="drill-table" id="prod-table">
-            <thead>
-              <tr>
-                <th data-col="product_name">Product</th>
+          <div class="table-wrap">
+            <table class="data-table" id="story-cat-table">
+              <thead><tr>
                 <th data-col="category">Category</th>
-                <th data-col="revenue" class="num">Revenue</th>
-                <th data-col="transactions" class="num">Orders</th>
-                <th data-col="units_sold" class="num">Units</th>
-                <th data-col="add_to_cart" class="num">ATC</th>
-                <th data-col="pdp_cvr" class="num">PDP CVR %</th>
-              </tr>
-            </thead>
-            <tbody id="prod-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ FUNNEL ══════════════════════════════════ -->
-    <div class="tab-panel" id="panel-funnel">
-
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="fn-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="fn-dateTo">
-        </div>
-        <button class="btn-reset" id="fn-reset">Reset</button>
-      </div>
-
-      <div class="stat-pills" id="fn-pills"></div>
-
-      <div class="chart-grid">
-        <div class="chart-card full-width">
-          <h3>Weekly checkout funnel — begin checkout volume</h3>
-          <div class="chart-meta">begin_checkout events per week · delivery changes annotated</div>
-          <div class="chart-wrap tall"><canvas id="fn-checkout-chart"></canvas></div>
-        </div>
-        <div class="chart-card full-width">
-          <h3>Funnel step drop-off rates — weekly</h3>
-          <div class="chart-meta">% of begin_checkout that reaches each step · delivery changes annotated</div>
-          <div class="chart-wrap tall"><canvas id="fn-dropoff-chart"></canvas></div>
-        </div>
-        <div class="chart-card full-width">
-          <h3>Add to cart → begin checkout rate</h3>
-          <div class="chart-meta">Weekly ATC-to-checkout conversion · delivery changes annotated</div>
-          <div class="chart-wrap"><canvas id="fn-atc-checkout-chart"></canvas></div>
-        </div>
-        <div class="chart-card full-width">
-          <h3>Add shipping info → purchase rate</h3>
-          <div class="chart-meta">% of users who add shipping who complete purchase · delivery changes annotated</div>
-          <div class="chart-wrap"><canvas id="fn-shipping-purchase-chart"></canvas></div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- ════════════════════════════════ AOV ══════════════════════════════════ -->
-    <div class="tab-panel" id="panel-aov">
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Category</label>
-          <select id="aov-cat-select"><option value="">All categories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="aov-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="aov-dateTo">
-        </div>
-        <button class="btn-reset" id="aov-reset">Reset</button>
-      </div>
-      <div class="stat-pills" id="aov-pills"></div>
-      <div class="chart-grid">
-        <div class="chart-card full-width">
-          <h3 id="aov-chart-title">Average Order Value — weekly by category</h3>
-          <div class="chart-meta">AOV = total order revenue ÷ number of transactions</div>
-          <div class="chart-wrap tall"><canvas id="aov-trend-chart"></canvas></div>
-        </div>
-        <div class="chart-card full-width">
-          <h3>Revenue vs AOV — is revenue change driven by volume or basket size?</h3>
-          <div class="chart-meta">Indexed to 100 at start of period · select a category above</div>
-          <div class="chart-wrap"><canvas id="aov-index-chart"></canvas></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ UNITS PER TX ═════════════════════════ -->
-    <div class="tab-panel" id="panel-units">
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Category</label>
-          <select id="units-cat-select"><option value="">All categories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Search product</label>
-          <input type="text" class="search-bar" id="units-search" placeholder="e.g. Navajos dining chair…">
-        </div>
-        <div class="filter-group">
-          <label>Date from</label>
-          <input type="date" id="units-dateFrom">
-        </div>
-        <div class="filter-group">
-          <label>Date to</label>
-          <input type="date" id="units-dateTo">
-        </div>
-        <button class="btn-reset" id="units-reset">Reset</button>
-      </div>
-      <div class="chart-grid">
-        <div class="chart-card full-width" id="units-chart-card" style="display:none">
-          <h3 id="units-chart-title">Avg units per transaction — weekly</h3>
-          <div class="chart-meta">Click a product row to chart · delivery changes annotated</div>
-          <div class="metric-tabs" id="units-metric-tabs">
-            <button class="metric-tab active" data-metric="avg_units_per_tx">Avg units / transaction</button>
-            <button class="metric-tab" data-metric="pct_tx_4plus_units">% transactions with 4+ units</button>
-            <button class="metric-tab" data-metric="transactions">Transactions</button>
-            <button class="metric-tab" data-metric="total_units">Total units sold</button>
-          </div>
-          <div class="chart-wrap"><canvas id="units-trend-chart"></canvas></div>
-        </div>
-      </div>
-      <div class="section-header">
-        <h2>Units per transaction by product</h2>
-        <span class="section-note" id="units-count"></span>
-      </div>
-      <div class="chart-card" style="padding:0">
-        <div class="drill-table-wrap" style="max-height:600px;overflow-y:auto">
-          <table class="drill-table" id="units-table">
-            <thead>
-              <tr>
-                <th data-col="product_name">Product</th>
-                <th data-col="category">Category</th>
-                <th data-col="transactions" class="num">Transactions</th>
-                <th data-col="total_units" class="num">Total Units</th>
-                <th data-col="avg_units_per_tx" class="num">Avg Units/Tx</th>
-                <th data-col="pct_tx_4plus_units" class="num">% Tx with 4+ units</th>
-              </tr>
-            </thead>
-            <tbody id="units-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ════════════════════════════════ CHANGE IMPACT ════════════════════════ -->
-    <div class="tab-panel" id="panel-impact">
-      <div class="filters-bar">
-        <div class="filter-group">
-          <label>Change event</label>
-          <select id="impact-change-select"><option value="">All changes</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Category</label>
-          <select id="impact-cat-select"><option value="">All categories</option></select>
-        </div>
-        <div class="filter-group">
-          <label>Sort by</label>
-          <select id="impact-sort-select">
-            <option value="rev_pct_change">Revenue % change</option>
-            <option value="tx_pct_change">Transactions % change</option>
-            <option value="aov_pct_change">AOV % change</option>
-            <option value="avg_rev_after">Revenue after</option>
-          </select>
-        </div>
-      </div>
-      <div class="section-header">
-        <h2>4-week avg before vs after each delivery change</h2>
-        <span class="section-note">Revenue, transactions and AOV compared 4 weeks either side of each change date</span>
-      </div>
-      <div class="chart-card" style="padding:0">
-        <div class="drill-table-wrap" style="max-height:700px;overflow-y:auto">
-          <table class="drill-table" id="impact-table">
-            <thead>
-              <tr>
-                <th data-col="change_label">Change</th>
-                <th data-col="category">Category</th>
-                <th class="num">Rev before</th>
-                <th class="num">Rev after</th>
+                <th data-col="avg_rev_before" class="num">Rev before</th>
+                <th data-col="avg_rev_after" class="num">Rev after</th>
                 <th data-col="rev_pct_change" class="num">Rev Δ%</th>
-                <th class="num">Tx before</th>
-                <th class="num">Tx after</th>
-                <th data-col="tx_pct_change" class="num">Tx Δ%</th>
-                <th class="num">AOV before</th>
-                <th class="num">AOV after</th>
+                <th data-col="avg_tx_before" class="num">Orders before</th>
+                <th data-col="avg_tx_after" class="num">Orders after</th>
+                <th data-col="tx_pct_change" class="num">Orders Δ%</th>
                 <th data-col="aov_pct_change" class="num">AOV Δ%</th>
-              </tr>
-            </thead>
-            <tbody id="impact-table-body"></tbody>
-          </table>
+              </tr></thead>
+              <tbody id="story-cat-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
-      <div class="chart-grid" style="margin-top:20px">
-        <div class="chart-card full-width">
-          <h3>Revenue % change by category — across all delivery changes</h3>
-          <div class="chart-meta">4-week avg after vs 4-week avg before each change · sorted by impact</div>
-          <div class="chart-wrap tall"><canvas id="impact-bar-chart"></canvas></div>
+
+      <!-- Product drill-down (shown when a category row is selected) -->
+      <div id="story-prod-drill" style="display:none">
+        <div class="drill-section">
+          <div class="drill-header">
+            <div>
+              <h2 id="story-prod-drill-title">Product breakdown</h2>
+              <div class="drill-sub">4-week avg before vs after · click a product to chart its weekly trend</div>
+            </div>
+            <button class="back-btn" id="story-prod-back">✕ Close</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="story-prod-table">
+              <thead><tr>
+                <th data-col="product_name">Product</th>
+                <th data-col="avg_rev_before" class="num">Rev before</th>
+                <th data-col="avg_rev_after" class="num">Rev after</th>
+                <th data-col="rev_pct_change" class="num">Rev Δ%</th>
+                <th data-col="avg_tx_before" class="num">Orders before</th>
+                <th data-col="avg_tx_after" class="num">Orders after</th>
+                <th data-col="tx_pct_change" class="num">Orders Δ%</th>
+                <th data-col="avg_units_before" class="num">Avg units before</th>
+                <th data-col="avg_units_after" class="num">Avg units after</th>
+              </tr></thead>
+              <tbody id="story-prod-tbody"></tbody>
+            </table>
+          </div>
         </div>
+
+        <!-- Weekly trend chart for selected product -->
+        <div class="chart-card" id="story-trend-card" style="display:none">
+          <h3 id="story-trend-title">Weekly trend</h3>
+          <div class="chart-sub" id="story-trend-sub"></div>
+          <div class="metric-tabs" id="story-trend-tabs">
+            <button class="m-tab active" data-metric="revenue">Revenue</button>
+            <button class="m-tab" data-metric="transactions">Transactions</button>
+            <button class="m-tab" data-metric="units_sold">Units sold</button>
+          </div>
+          <div class="chart-wrap tall"><canvas id="story-trend-chart"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════════════ OVERVIEW ══════════════════════ -->
+    <div class="tab-panel" id="panel-overview">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="ov-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Date from</label><input type="date" id="ov-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="ov-to"></div>
+        <button class="btn-sm" id="ov-reset">Reset</button>
+      </div>
+      <div class="pills" id="ov-pills"></div>
+      <div class="metric-tabs" id="ov-metric-tabs">
+        <button class="m-tab active" data-metric="revenue">Revenue</button>
+        <button class="m-tab" data-metric="transactions">Transactions</button>
+        <button class="m-tab" data-metric="sessions">Sessions</button>
+        <button class="m-tab" data-metric="cvr">Conv. Rate %</button>
+        <button class="m-tab" data-metric="add_to_cart">Add to Cart</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:20px">
+        <div class="chart-card" style="grid-column:1/-1"><h3>Site-wide weekly trend</h3><div class="chart-sub">All categories combined</div><div class="chart-wrap tall"><canvas id="ov-sitewide"></canvas></div></div>
+        <div class="chart-card"><h3>Top 10 categories — revenue</h3><div class="chart-sub">Latest 12 weeks</div><div class="chart-wrap"><canvas id="ov-cat-bar"></canvas></div></div>
+        <div class="chart-card"><h3>Conversion rate</h3><div class="chart-sub">Site-wide CVR %</div><div class="chart-wrap"><canvas id="ov-cvr"></canvas></div></div>
       </div>
     </div>
 
-    <!-- ════════════════════════════════ DELIVERY STRUCTURE ══════════════════ -->
+    <!-- ══════════════════════ CATEGORY ══════════════════════ -->
+    <div class="tab-panel" id="panel-category">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="cat-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Category</label><select id="cat-sel"><option value="">All categories</option></select></div>
+        <div class="fg"><label>Metric</label><select id="cat-metric-sel"><option value="revenue">Revenue</option><option value="transactions">Transactions</option><option value="sessions">Sessions</option><option value="cvr">Conv. Rate %</option><option value="add_to_cart">Add to Cart</option><option value="began_checkout">Began Checkout</option></select></div>
+        <div class="fg"><label>Date from</label><input type="date" id="cat-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="cat-to"></div>
+        <button class="btn-sm" id="cat-reset">Reset</button>
+      </div>
+      <div class="chart-card"><h3 id="cat-chart-title">Category weekly trend</h3><div class="chart-sub">Top 10 by revenue shown; select a category to isolate</div><div class="chart-wrap tall"><canvas id="cat-trend"></canvas></div></div>
+      <div class="section-hdr"><h2>Category summary</h2><span>Click headers to sort</span></div>
+      <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:500px"><table class="data-table" id="cat-table"><thead><tr><th data-col="category">Category</th><th data-col="sessions" class="num">Sessions</th><th data-col="revenue" class="num">Revenue</th><th data-col="transactions" class="num">Orders</th><th data-col="cvr" class="num">CVR %</th><th data-col="add_to_cart" class="num">ATC</th></tr></thead><tbody id="cat-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- ══════════════════════ SUBCATEGORY ══════════════════════ -->
+    <div class="tab-panel" id="panel-subcategory">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="subcat-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Parent category</label><select id="subcat-cat-sel"><option value="">All</option></select></div>
+        <div class="fg"><label>Subcategory</label><select id="subcat-sel"><option value="">All</option></select></div>
+        <div class="fg"><label>Metric</label><select id="subcat-metric-sel"><option value="revenue">Revenue</option><option value="transactions">Transactions</option><option value="sessions">Sessions</option><option value="cvr">Conv. Rate %</option><option value="add_to_cart">Add to Cart</option></select></div>
+        <div class="fg"><label>Date from</label><input type="date" id="subcat-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="subcat-to"></div>
+        <button class="btn-sm" id="subcat-reset">Reset</button>
+      </div>
+      <div class="chart-card"><h3 id="subcat-chart-title">Subcategory weekly trend</h3><div class="chart-sub">Top 8 shown; select parent to filter</div><div class="chart-wrap tall"><canvas id="subcat-trend"></canvas></div></div>
+      <div class="section-hdr"><h2>Subcategory summary</h2></div>
+      <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:500px"><table class="data-table" id="subcat-table"><thead><tr><th data-col="category">Category</th><th data-col="subcategory">Subcategory</th><th data-col="sessions" class="num">Sessions</th><th data-col="revenue" class="num">Revenue</th><th data-col="transactions" class="num">Orders</th><th data-col="cvr" class="num">CVR %</th><th data-col="add_to_cart" class="num">ATC</th></tr></thead><tbody id="subcat-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- ══════════════════════ PRODUCT ══════════════════════ -->
+    <div class="tab-panel" id="panel-product">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="prod-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Category</label><select id="prod-cat-sel"><option value="">All categories</option></select></div>
+        <div class="fg"><label>Search product</label><input type="text" id="prod-search" placeholder="Type product name…" style="min-width:220px"></div>
+        <div class="fg"><label>Date from</label><input type="date" id="prod-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="prod-to"></div>
+        <button class="btn-sm" id="prod-reset">Reset</button>
+      </div>
+      <div class="chart-card" id="prod-chart-card" style="display:none">
+        <h3 id="prod-chart-title">Product weekly trend</h3>
+        <div class="chart-sub">Click a row to chart</div>
+        <div class="metric-tabs" id="prod-metric-tabs">
+          <button class="m-tab active" data-metric="revenue">Revenue</button>
+          <button class="m-tab" data-metric="transactions">Transactions</button>
+          <button class="m-tab" data-metric="units_sold">Units sold</button>
+          <button class="m-tab" data-metric="pdp_cvr">PDP CVR %</button>
+          <button class="m-tab" data-metric="add_to_cart">Add to Cart</button>
+        </div>
+        <div class="chart-wrap"><canvas id="prod-trend"></canvas></div>
+      </div>
+      <div class="section-hdr"><h2>Product table</h2><span id="prod-count"></span></div>
+      <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:600px"><table class="data-table" id="prod-table"><thead><tr><th data-col="product_name">Product</th><th data-col="category">Category</th><th data-col="revenue" class="num">Revenue</th><th data-col="transactions" class="num">Orders</th><th data-col="units_sold" class="num">Units</th><th data-col="add_to_cart" class="num">ATC</th><th data-col="pdp_cvr" class="num">PDP CVR %</th></tr></thead><tbody id="prod-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- ══════════════════════ FUNNEL ══════════════════════ -->
+    <div class="tab-panel" id="panel-funnel">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="fn-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Date from</label><input type="date" id="fn-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="fn-to"></div>
+        <button class="btn-sm" id="fn-reset">Reset</button>
+      </div>
+      <div class="pills" id="fn-pills"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:20px">
+        <div class="chart-card" style="grid-column:1/-1"><h3>Weekly checkout volume</h3><div class="chart-sub">begin_checkout events per week</div><div class="chart-wrap tall"><canvas id="fn-checkout"></canvas></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><h3>Funnel step drop-off rates</h3><div class="chart-sub">% of begin_checkout reaching each step</div><div class="chart-wrap tall"><canvas id="fn-dropoff"></canvas></div></div>
+        <div class="chart-card"><h3>Add to cart → checkout rate</h3><div class="chart-sub">ATC-to-checkout progression</div><div class="chart-wrap"><canvas id="fn-atc"></canvas></div></div>
+        <div class="chart-card"><h3>Shipping info → purchase rate</h3><div class="chart-sub">% completing purchase after seeing delivery cost</div><div class="chart-wrap"><canvas id="fn-ship"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ AOV ══════════════════════ -->
+    <div class="tab-panel" id="panel-aov">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="aov-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Category</label><select id="aov-cat-sel"><option value="">All categories</option></select></div>
+        <div class="fg"><label>Date from</label><input type="date" id="aov-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="aov-to"></div>
+        <button class="btn-sm" id="aov-reset">Reset</button>
+      </div>
+      <div class="pills" id="aov-pills"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(560px,1fr));gap:20px">
+        <div class="chart-card" style="grid-column:1/-1"><h3 id="aov-chart-title">AOV weekly by category</h3><div class="chart-sub">Average order value = total revenue ÷ transactions</div><div class="chart-wrap tall"><canvas id="aov-trend"></canvas></div></div>
+        <div class="chart-card" style="grid-column:1/-1"><h3>Revenue vs AOV vs Transactions — indexed</h3><div class="chart-sub">Select a category above · indexed to 100 at start of period</div><div class="chart-wrap"><canvas id="aov-index"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════ UNITS PER TX ══════════════════════ -->
+    <div class="tab-panel" id="panel-units">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="units-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Category</label><select id="units-cat-sel"><option value="">All categories</option></select></div>
+        <div class="fg"><label>Search product</label><input type="text" id="units-search" placeholder="e.g. dining chair…" style="min-width:200px"></div>
+        <div class="fg"><label>Date from</label><input type="date" id="units-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="units-to"></div>
+        <button class="btn-sm" id="units-reset">Reset</button>
+      </div>
+      <div class="chart-card" id="units-chart-card" style="display:none">
+        <h3 id="units-chart-title">Units per transaction — weekly</h3>
+        <div class="chart-sub">Click a product row to chart</div>
+        <div class="metric-tabs" id="units-metric-tabs">
+          <button class="m-tab active" data-metric="avg_units_per_tx">Avg units/tx</button>
+          <button class="m-tab" data-metric="pct_tx_4plus_units">% tx with 4+ units</button>
+          <button class="m-tab" data-metric="transactions">Transactions</button>
+          <button class="m-tab" data-metric="total_units">Total units</button>
+        </div>
+        <div class="chart-wrap"><canvas id="units-trend"></canvas></div>
+      </div>
+      <div class="section-hdr"><h2>Units per transaction by product</h2><span id="units-count"></span></div>
+      <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:600px"><table class="data-table" id="units-table"><thead><tr><th data-col="product_name">Product</th><th data-col="category">Category</th><th data-col="transactions" class="num">Transactions</th><th data-col="total_units" class="num">Total units</th><th data-col="avg_units_per_tx" class="num">Avg units/tx</th><th data-col="pct_tx_4plus_units" class="num">% tx with 4+</th></tr></thead><tbody id="units-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- ══════════════════════ DELIVERY STRUCTURE ══════════════════════ -->
     <div class="tab-panel" id="panel-delivery">
-      <div class="section-header">
-        <h2>Current delivery cost structure</h2>
-        <span class="section-note">Post 27 March 2026</span>
-      </div>
-      <div id="delivery-structure-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:32px"></div>
-      <div class="section-header">
-        <h2>Full change history</h2>
-      </div>
+      <div class="section-hdr"><h2>Current delivery cost structure</h2><span>Post 27 March 2026</span></div>
+      <div class="delivery-grid" id="delivery-cards"></div>
+      <div class="section-hdr"><h2>Full change history</h2></div>
       <div id="delivery-timeline"></div>
     </div>
 
   </div><!-- /mainContent -->
 </div><!-- /page-wrap -->
 
+<!-- AI FAB + PANEL -->
+<button class="ai-fab" id="ai-fab">✦ Ask AI</button>
+<div class="ai-panel" id="ai-panel">
+  <div class="ai-panel-header">
+    <h3>✦ Ask about your delivery data</h3>
+    <button class="ai-close" id="ai-close">×</button>
+  </div>
+  <div class="ai-messages" id="ai-messages">
+    <div class="ai-msg assistant">Hi! I have access to all your delivery impact data. Ask me anything — e.g. "Did the March 2026 price rise hurt dining chair sales?" or "Which category was most affected by the August 2025 change?"</div>
+  </div>
+  <div class="ai-suggestions" id="ai-suggestions">
+    <button class="ai-sug">Did March 2026 hurt dining chairs?</button>
+    <button class="ai-sug">Which category dropped most after April 2025?</button>
+    <button class="ai-sug">Did AOV change after any price rises?</button>
+    <button class="ai-sug">What happened to checkout conversion?</button>
+  </div>
+  <div class="ai-input-row">
+    <textarea class="ai-input" id="ai-input" placeholder="Ask a question about your data…" rows="1"></textarea>
+    <button class="ai-send" id="ai-send">Send</button>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════════
-//  GLOBALS
+//  STATE & CONSTANTS
 // ═══════════════════════════════════════════════════════
-
-let STATE = {
-  meta: null,
-  categoryData: null,
-  subcategoryData: null,
-  productData: null,
-  funnelData: null,
-  charts: {},
-  productSortCol: 'revenue',
-  productSortDir: 'desc',
-  catSortCol: 'revenue',
-  catSortDir: 'desc',
-  subcatSortCol: 'revenue',
-  subcatSortDir: 'desc',
-  selectedProduct: null,
-  prodMetric: 'revenue',
+const S = {
+  meta:null, categoryData:null, subcategoryData:null, productData:null,
+  funnelData:null, aovData:null, unitsData:null,
+  impactData:null, impactSubcat:null, impactProduct:null,
+  charts:{},
+  selectedChange:null, selectedCat:null, selectedProd:null,
+  prodSortCol:'revenue', prodSortDir:'desc',
+  catSortCol:'revenue', catSortDir:'desc',
+  subcatSortCol:'revenue', subcatSortDir:'desc',
+  storyCatSortCol:'rev_pct_change', storyCatSortDir:'desc',
+  storyProdSortCol:'avg_rev_after', storyProdSortDir:'desc',
+  unitsSortCol:'transactions', unitsSortDir:'desc',
+  prodMetric:'revenue', unitsMetric:'avg_units_per_tx', storyMetric:'revenue',
+  aiHistory:[],
 };
 
-// ─── Delivery change colours (index → CSS var)
 const CHANGE_COLORS = ['#E67E22','#8E44AD','#C0392B','#0D7377','#1A2A49'];
+const LINE_PALETTE  = ['#1A2A49','#C8A96E','#E67E22','#2D8A5F','#8E44AD','#C0392B','#16A085','#2980B9','#F39C12','#7F8C8D','#D35400','#1ABC9C'];
 
-// ─── Chart.js line colours for multi-series
-const LINE_PALETTE = [
-  '#1A2A49','#C8A96E','#E67E22','#2D8A5F','#8E44AD',
-  '#C0392B','#16A085','#2980B9','#F39C12','#7F8C8D',
-  '#D35400','#1ABC9C','#9B59B6','#3498DB','#E74C3C',
-];
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const fmt = {
+  £: v => v==null?'—':'£'+Number(v).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0}),
+  n: v => v==null?'—':Number(v).toLocaleString('en-GB'),
+  pct: v => v==null?'—':Number(v).toFixed(2)+'%',
+};
+
+function isoWeeks(data,df,dt){
+  return data.filter(d=>{
+    if(df&&d.week<df)return false;
+    if(dt&&d.week>dt)return false;
+    return true;
+  });
+}
+
+function uniqueSortedWeeks(data){ return [...new Set(data.map(d=>d.week))].sort(); }
+
+function changeAnnotations(weeks){
+  const changes = S.meta.delivery_changes;
+  const minWeek = weeks[0], maxWeek = weeks[weeks.length-1];
+  const anns={};
+  let ci=0;
+  changes.forEach((ch,i)=>{
+    if(ch.date<minWeek)return;
+    const tw = weeks.find(w=>w>=ch.date)||maxWeek;
+    if(!tw)return;
+    anns[`l${i}`]={
+      type:'line', xMin:weeks.indexOf(tw), xMax:weeks.indexOf(tw),
+      borderColor:CHANGE_COLORS[ci%CHANGE_COLORS.length],
+      borderWidth:2, borderDash:[6,4],
+      label:{display:false}
+    };
+    ci++;
+  });
+  return anns;
+}
+
+function buildLegend(containerId){
+  const changes = S.meta.delivery_changes;
+  const allWeeks = uniqueSortedWeeks(S.categoryData.concat(S.funnelData));
+  const minWeek = allWeeks[0];
+  const relevant = changes.filter(ch=>ch.date>=minWeek);
+  const el = document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML = relevant.map((ch,i)=>`
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${CHANGE_COLORS[i%CHANGE_COLORS.length]}"></div>
+      <div><strong>${ch.date} — ${ch.label}</strong><span>${ch.detail}</span></div>
+    </div>`).join('');
+}
+
+function buildLineChart(id,labels,datasets,anns,yLabel=''){
+  const ctx=document.getElementById(id); if(!ctx)return null;
+  if(S.charts[id])S.charts[id].destroy();
+  const ch=new Chart(ctx,{
+    type:'line', data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{position:'bottom',labels:{boxWidth:12,font:{size:11},padding:12}},
+        tooltip:{callbacks:{label:ctx=>{
+          const v=ctx.parsed.y;
+          if(yLabel==='£')return ` ${ctx.dataset.label}: ${fmt.£(v)}`;
+          if(yLabel==='%')return ` ${ctx.dataset.label}: ${fmt.pct(v)}`;
+          return ` ${ctx.dataset.label}: ${fmt.n(v)}`;
+        }}},
+        annotation:{annotations:anns}
+      },
+      scales:{
+        x:{ticks:{maxTicksLimit:16,font:{size:10},maxRotation:45},grid:{color:'#F0EDE8'}},
+        y:{ticks:{font:{size:10},callback:v=>yLabel==='£'?'£'+v.toLocaleString('en-GB'):yLabel==='%'?v+'%':v.toLocaleString('en-GB')},grid:{color:'#F0EDE8'}}
+      }
+    }
+  });
+  S.charts[id]=ch; return ch;
+}
+
+function makeSortableTable(tableId,sortColState,sortDirState,onSort){
+  document.getElementById(tableId).querySelectorAll('th[data-col]').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const col=th.dataset.col;
+      S[sortDirState]=(S[sortColState]===col&&S[sortDirState]==='desc')?'asc':'desc';
+      S[sortColState]=col;
+      document.getElementById(tableId).querySelectorAll('th').forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+      th.classList.add(S[sortDirState]==='desc'?'sort-desc':'sort-asc');
+      onSort();
+    });
+  });
+}
+
+function deltaCell(v){
+  if(v==null)return '<td class="num">—</td>';
+  const cls=v>0?'delta-pos':v<0?'delta-neg':'';
+  return `<td class="num ${cls}">${v>0?'+':''}${v}%</td>`;
+}
 
 // ═══════════════════════════════════════════════════════
 //  DATA LOADING
 // ═══════════════════════════════════════════════════════
-
-async function loadJSON(path) {
-  const r = await fetch(path + '?t=' + Date.now());
-  if (!r.ok) throw new Error(`HTTP ${r.status} loading ${path}`);
+async function loadJSON(p){
+  const r=await fetch(p+'?t='+Date.now());
+  if(!r.ok)throw new Error(`HTTP ${r.status} loading ${p}`);
   return r.json();
 }
 
-async function initDashboard() {
-  try {
-    const [meta, category, subcategory, product, funnel, aov, units, impact] = await Promise.all([
+async function initDashboard(){
+  try{
+    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd]=await Promise.all([
       loadJSON('data/meta.json'),
       loadJSON('data/category_weekly.json'),
       loadJSON('data/subcategory_weekly.json'),
       loadJSON('data/product_weekly.json'),
       loadJSON('data/funnel_weekly.json'),
-      loadJSON('data/aov_weekly.json').catch(() => []),
-      loadJSON('data/units_per_tx.json').catch(() => []),
-      loadJSON('data/change_impact.json').catch(() => []),
+      loadJSON('data/aov_weekly.json').catch(()=>[]),
+      loadJSON('data/units_per_tx.json').catch(()=>[]),
+      loadJSON('data/change_impact.json').catch(()=>[]),
+      loadJSON('data/change_impact_subcat.json').catch(()=>[]),
+      loadJSON('data/change_impact_product.json').catch(()=>[]),
     ]);
+    S.meta=meta; S.categoryData=cat; S.subcategoryData=subcat; S.productData=prod;
+    S.funnelData=funnel; S.aovData=aov; S.unitsData=units;
+    S.impactData=impact; S.impactSubcat=impactSubcat; S.impactProduct=impactProd;
 
-    STATE.meta = meta;
-    STATE.categoryData = category;
-    STATE.subcategoryData = subcategory;
-    STATE.productData = product;
-    STATE.funnelData = funnel;
-    STATE.aovData = aov;
-    STATE.unitsData = units;
-    STATE.impactData = impact;
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('mainContent').style.display='block';
+    document.getElementById('lastUpdated').textContent='Updated: '+new Date(meta.last_updated).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'});
 
-    document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'block';
-    document.getElementById('lastUpdated').textContent =
-      'Updated: ' + new Date(meta.last_updated).toLocaleString('en-GB', {dateStyle:'medium',timeStyle:'short'});
-
-    // Only show changes within the actual data range
-    const allDataWeeks = [...new Set([...STATE.categoryData, ...STATE.funnelData].map(d => d.week))].sort();
-    const minDataWeek = allDataWeeks[0];
-    const relevantChanges = meta.delivery_changes.filter(ch => ch.date >= minDataWeek);
-    buildChangeLegend(relevantChanges, true);
-    initNavTabs();
+    initNav();
+    initStory();
     initOverview();
     initCategory();
     initSubcategory();
@@ -1018,1062 +612,680 @@ async function initDashboard() {
     initFunnel();
     initAOV();
     initUnits();
-    initImpact();
     initDelivery();
+    initAI();
 
-  } catch (err) {
-    document.getElementById('loadingState').innerHTML = `
-      <div class="error-state">
-        <strong>Couldn't load data files.</strong>
-        Make sure you've run <code>python fetch_data.py</code> and the <code>data/</code> folder is next to this HTML file.
-        <code>${err.message}</code>
-      </div>`;
+  }catch(err){
+    document.getElementById('loadingState').innerHTML=`<div class="error-box"><strong>Couldn't load data files.</strong> Run <code>python fetch_data.py</code> first.<code>${err.message}</code></div>`;
   }
 }
 
 // ═══════════════════════════════════════════════════════
-//  HELPERS
+//  NAV
 // ═══════════════════════════════════════════════════════
-
-const fmt = {
-  currency: v => v == null ? '—' : '£' + Number(v).toLocaleString('en-GB', {minimumFractionDigits:0,maximumFractionDigits:0}),
-  num:      v => v == null ? '—' : Number(v).toLocaleString('en-GB'),
-  pct:      v => v == null ? '—' : Number(v).toFixed(2) + '%',
-};
-
-function isoWeeks(data, dateFrom, dateTo) {
-  // Filter an array of objects with a 'week' ISO date string
-  return data.filter(d => {
-    if (dateFrom && d.week < dateFrom) return false;
-    if (dateTo   && d.week > dateTo)   return false;
-    return true;
-  });
-}
-
-function aggregateBy(data, groupKey, metric, weeks) {
-  // Roll up data keyed by groupKey, summing/averaging metric across weeks
-  const map = {};
-  data.forEach(row => {
-    if (!weeks.has(row.week)) return;
-    const k = row[groupKey];
-    if (!k) return;
-    if (!map[k]) map[k] = { key: k, revenue:0, transactions:0, sessions:0, add_to_cart:0, began_checkout:0, _cvrSum:0, _cvrN:0 };
-    map[k].revenue      += row.revenue      || 0;
-    map[k].transactions += row.transactions || 0;
-    map[k].sessions     += row.sessions     || 0;
-    map[k].add_to_cart  += row.add_to_cart  || 0;
-    map[k].began_checkout += row.began_checkout || 0;
-    if (row.cvr != null) { map[k]._cvrSum += row.cvr; map[k]._cvrN++; }
-  });
-  return Object.values(map).map(r => ({
-    ...r,
-    cvr: r._cvrN ? +(r._cvrSum / r._cvrN).toFixed(3) : 0
-  }));
-}
-
-function uniqueSortedWeeks(data) {
-  return [...new Set(data.map(d => d.week))].sort();
-}
-
-function changeAnnotations(changes, weeks) {
-  // Convert delivery changes to Chart.js annotation plugin config
-  const anns = {};
-  const minWeek = weeks[0];
-  const maxWeek = weeks[weeks.length - 1];
-  let annIdx = 0;
-  changes.forEach((ch, i) => {
-    // Skip changes that fall before the data range
-    if (ch.date < minWeek) return;
-    // Find the closest week >= the change date
-    const targetWeek = weeks.find(w => w >= ch.date) || maxWeek;
-    if (!targetWeek) return;
-    const xVal = weeks.indexOf(targetWeek);
-    const yOffsets = [-8, 32, 72, 110];
-    const ci = annIdx++;
-    anns[`line${i}`] = {
-      type: 'line',
-      xMin: xVal, xMax: xVal,
-      borderColor: CHANGE_COLORS[ci % CHANGE_COLORS.length],
-      borderWidth: 2,
-      borderDash: [6, 4],
-      label: { display: false }
-    };
-  });
-  return anns;
-}
-
-function buildLineChart(canvasId, labels, datasets, annotations, yLabel = '') {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return null;
-  if (STATE.charts[canvasId]) { STATE.charts[canvasId].destroy(); }
-
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 }, padding: 12 } },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const v = ctx.parsed.y;
-              if (yLabel.includes('£')) return ` ${ctx.dataset.label}: ${fmt.currency(v)}`;
-              if (yLabel.includes('%')) return ` ${ctx.dataset.label}: ${fmt.pct(v)}`;
-              return ` ${ctx.dataset.label}: ${fmt.num(v)}`;
-            }
-          }
-        },
-        annotation: { annotations }
-      },
-      scales: {
-        x: {
-          ticks: { maxTicksLimit: 16, font: { size: 10 }, maxRotation: 45 },
-          grid: { color: '#F0EDE8' }
-        },
-        y: {
-          ticks: {
-            font: { size: 10 },
-            callback: v => yLabel.includes('£') ? '£' + v.toLocaleString('en-GB') :
-                           yLabel.includes('%') ? v + '%' : v.toLocaleString('en-GB')
-          },
-          grid: { color: '#F0EDE8' }
-        }
-      }
-    }
-  });
-  STATE.charts[canvasId] = chart;
-  return chart;
-}
-
-function buildBarChart(canvasId, labels, dataset, yLabel = '') {
-  const ctx = document.getElementById(canvasId);
-  if (!ctx) return;
-  if (STATE.charts[canvasId]) STATE.charts[canvasId].destroy();
-  STATE.charts[canvasId] = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [dataset] },
-    options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          ticks: { font: { size: 10 }, callback: v => yLabel.includes('£') ? '£' + v.toLocaleString('en-GB') : v.toLocaleString('en-GB') },
-          grid: { color: '#F0EDE8' }
-        },
-        y: { ticks: { font: { size: 11 } }, grid: { display: false } }
-      }
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════════════
-//  CHANGE LEGEND
-// ═══════════════════════════════════════════════════════
-
-function buildChangeLegend(changes, sequential = false) {
-  const container = document.getElementById('changeLegendItems');
-  container.innerHTML = changes.map((ch, i) => `
-    <div class="change-legend-item">
-      <div class="change-dot" style="background:${CHANGE_COLORS[i % CHANGE_COLORS.length]}"></div>
-      <div class="change-info">
-        <strong>${ch.date} — ${ch.label}</strong>
-        <span>${ch.detail}</span>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ═══════════════════════════════════════════════════════
-//  NAV TABS
-// ═══════════════════════════════════════════════════════
-
-function initNavTabs() {
-  document.querySelectorAll('.nav-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+function initNav(){
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+      document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
     });
   });
+}
+
+// ═══════════════════════════════════════════════════════
+//  STORY (IMPACT SUMMARY)
+// ═══════════════════════════════════════════════════════
+function initStory(){
+  const allWeeks = uniqueSortedWeeks(S.categoryData);
+  document.getElementById('story-date-range').textContent = `${allWeeks[0]} to ${allWeeks[allWeeks.length-1]}`;
+
+  // Build change cards from impactData
+  const changes = [...new Set((S.impactData||[]).map(d=>d.change_label))].sort();
+  const container = document.getElementById('story-cards');
+
+  container.innerHTML = changes.map((ch,i)=>{
+    const rows = S.impactData.filter(d=>d.change_label===ch);
+    const totRevBefore = rows.reduce((s,r)=>s+(r.avg_rev_before||0),0);
+    const totRevAfter  = rows.reduce((s,r)=>s+(r.avg_rev_after||0),0);
+    const totTxBefore  = rows.reduce((s,r)=>s+(r.avg_tx_before||0),0);
+    const totTxAfter   = rows.reduce((s,r)=>s+(r.avg_tx_after||0),0);
+    const revDelta = totRevBefore ? +((totRevAfter-totRevBefore)/totRevBefore*100).toFixed(1) : null;
+    const txDelta  = totTxBefore  ? +((totTxAfter-totTxBefore)/totTxBefore*100).toFixed(1)   : null;
+    const aovBefore = totTxBefore ? totRevBefore/totTxBefore : null;
+    const aovAfter  = totTxAfter  ? totRevAfter/totTxAfter   : null;
+    const aovDelta  = aovBefore   ? +((aovAfter-aovBefore)/aovBefore*100).toFixed(1)          : null;
+
+    const deltaClass = v => v==null?'neu':v>0?'pos':'neg';
+    const deltaStr   = v => v==null?'—':(v>0?'+':'')+v+'%';
+
+    // Extract date from label
+    const dateMatch = ch.match(/(\w+ \d{4})/);
+    const dateStr = dateMatch ? dateMatch[1] : ch;
+    const detail = (S.meta.delivery_changes.find(c=>ch.includes(c.label))||{}).detail || '';
+
+    return `<div class="change-card c${i}" data-change="${ch}">
+      <div class="card-date">${dateStr}</div>
+      <div class="card-title">${ch.replace(/^\w+ \d{4}: /,'')}</div>
+      <div class="card-detail">${detail}</div>
+      <div class="card-metrics">
+        <div class="card-metric"><div class="cm-label">Revenue</div><div class="cm-val ${deltaClass(revDelta)}">${deltaStr(revDelta)}</div><div class="cm-sub">4wk avg</div></div>
+        <div class="card-metric"><div class="cm-label">Orders</div><div class="cm-val ${deltaClass(txDelta)}">${deltaStr(txDelta)}</div><div class="cm-sub">4wk avg</div></div>
+        <div class="card-metric"><div class="cm-label">AOV</div><div class="cm-val ${deltaClass(aovDelta)}">${deltaStr(aovDelta)}</div><div class="cm-sub">4wk avg</div></div>
+      </div>
+      <div class="expand-hint">↓ Click to see category breakdown</div>
+    </div>`;
+  }).join('');
+
+  // Card click → show category drill
+  container.querySelectorAll('.change-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      container.querySelectorAll('.change-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      S.selectedChange = card.dataset.change;
+      S.selectedCat = null;
+      renderStoryCatTable();
+      document.getElementById('story-cat-drill').style.display='block';
+      document.getElementById('story-prod-drill').style.display='none';
+      document.getElementById('story-cat-drill').scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
+
+  // Back buttons
+  document.getElementById('story-cat-back').addEventListener('click',()=>{
+    document.getElementById('story-cat-drill').style.display='none';
+    document.getElementById('story-prod-drill').style.display='none';
+    container.querySelectorAll('.change-card').forEach(c=>c.classList.remove('selected'));
+  });
+  document.getElementById('story-prod-back').addEventListener('click',()=>{
+    document.getElementById('story-prod-drill').style.display='none';
+  });
+
+  makeSortableTable('story-cat-table','storyCatSortCol','storyCatSortDir',renderStoryCatTable);
+  makeSortableTable('story-prod-table','storyProdSortCol','storyProdSortDir',()=>renderStoryProdTable(S.selectedCat));
+
+  // Story trend metric tabs
+  document.getElementById('story-trend-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('story-trend-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      S.storyMetric = btn.dataset.metric;
+      if(S.selectedProd) renderStoryTrendChart(S.selectedProd);
+    });
+  });
+}
+
+function renderStoryCatTable(){
+  const rows = (S.impactData||[])
+    .filter(d=>d.change_label===S.selectedChange)
+    .sort((a,b)=>{
+      const av=Math.abs(a[S.storyCatSortCol]||0), bv=Math.abs(b[S.storyCatSortCol]||0);
+      return S.storyCatSortDir==='desc'?bv-av:av-bv;
+    });
+  document.getElementById('story-cat-drill-title').textContent = S.selectedChange + ' — category breakdown';
+  document.getElementById('story-cat-tbody').innerHTML = rows.map(r=>`
+    <tr data-cat="${(r.category||'').replace(/"/g,'&quot;')}">
+      <td class="name">${r.category||'(not set)'}</td>
+      <td class="num">${fmt.£(r.avg_rev_before)}</td>
+      <td class="num">${fmt.£(r.avg_rev_after)}</td>
+      ${deltaCell(r.rev_pct_change)}
+      <td class="num">${r.avg_tx_before?Math.round(r.avg_tx_before):'—'}</td>
+      <td class="num">${r.avg_tx_after?Math.round(r.avg_tx_after):'—'}</td>
+      ${deltaCell(r.tx_pct_change)}
+      ${deltaCell(r.aov_pct_change)}
+    </tr>`).join('');
+
+  document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(row=>{
+    row.addEventListener('click',()=>{
+      document.getElementById('story-cat-tbody').querySelectorAll('tr').forEach(r=>r.classList.remove('row-selected'));
+      row.classList.add('row-selected');
+      S.selectedCat = row.dataset.cat;
+      renderStoryProdTable(S.selectedCat);
+      document.getElementById('story-prod-drill').style.display='block';
+      document.getElementById('story-prod-drill').scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+  });
+}
+
+function renderStoryProdTable(cat){
+  const rows = (S.impactProduct||[])
+    .filter(d=>d.change_label===S.selectedChange && (!cat||d.category===cat))
+    .sort((a,b)=>{
+      const av=Math.abs(a[S.storyProdSortCol]||0), bv=Math.abs(b[S.storyProdSortCol]||0);
+      return S.storyProdSortDir==='desc'?bv-av:av-bv;
+    })
+    .slice(0,100);
+  document.getElementById('story-prod-drill-title').textContent = (cat||'All categories') + ' — product breakdown';
+  document.getElementById('story-prod-tbody').innerHTML = rows.map(r=>`
+    <tr data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}">
+      <td class="name">${r.product_name||'(unknown)'}</td>
+      <td class="num">${fmt.£(r.avg_rev_before)}</td>
+      <td class="num">${fmt.£(r.avg_rev_after)}</td>
+      ${deltaCell(r.rev_pct_change)}
+      <td class="num">${r.avg_tx_before?r.avg_tx_before.toFixed(1):'—'}</td>
+      <td class="num">${r.avg_tx_after?r.avg_tx_after.toFixed(1):'—'}</td>
+      ${deltaCell(r.tx_pct_change)}
+      <td class="num">${r.avg_units_before?r.avg_units_before.toFixed(2):'—'}</td>
+      <td class="num">${r.avg_units_after?r.avg_units_after.toFixed(2):'—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('story-prod-tbody').querySelectorAll('tr').forEach(row=>{
+    row.addEventListener('click',()=>{
+      document.getElementById('story-prod-tbody').querySelectorAll('tr').forEach(r=>r.classList.remove('row-selected'));
+      row.classList.add('row-selected');
+      S.selectedProd = row.dataset.prod;
+      renderStoryTrendChart(S.selectedProd);
+    });
+  });
+}
+
+function renderStoryTrendChart(prodName){
+  const rows = S.productData.filter(d=>d.product_name===prodName);
+  const weeks = uniqueSortedWeeks(rows);
+  const wm={}; rows.forEach(r=>{wm[r.week]=r;});
+  const anns = changeAnnotations(weeks);
+  const metric = S.storyMetric;
+  const yLabel = metric==='revenue'?'£':metric==='pdp_cvr'?'%':'';
+  document.getElementById('story-trend-card').style.display='block';
+  document.getElementById('story-trend-title').textContent = prodName;
+  document.getElementById('story-trend-sub').textContent = `Weekly ${metric.replace(/_/g,' ')} · delivery changes annotated`;
+  buildLineChart('story-trend-chart', weeks,
+    [{label:metric.replace(/_/g,' '),data:weeks.map(w=>wm[w]?wm[w][metric]||0:null),
+      borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:3,spanGaps:true}],
+    anns, yLabel);
+  document.getElementById('story-trend-card').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 // ═══════════════════════════════════════════════════════
 //  OVERVIEW
 // ═══════════════════════════════════════════════════════
+function initOverview(){
+  buildLegend('ov-legend');
+  const allWeeks=uniqueSortedWeeks(S.categoryData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const fromEl=document.getElementById('ov-from'),toEl=document.getElementById('ov-to');
+  fromEl.value=minD; toEl.value=maxD; fromEl.min=minD; fromEl.max=maxD; toEl.min=minD; toEl.max=maxD;
+  let metric='revenue';
 
-function initOverview() {
-  const allWeeks = uniqueSortedWeeks(STATE.categoryData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
-
-  const fromEl = document.getElementById('ov-dateFrom');
-  const toEl   = document.getElementById('ov-dateTo');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min   = minDate; toEl.max = maxDate;
-
-  let activeMetric = 'revenue';
-
-  function render() {
-    const df = fromEl.value || minDate;
-    const dt = toEl.value   || maxDate;
-    const filteredData = isoWeeks(STATE.categoryData, df, dt);
-    const weeks = uniqueSortedWeeks(filteredData);
-
-    // ── Aggregate site-wide by week
-    const weekMap = {};
-    filteredData.forEach(row => {
-      if (!weekMap[row.week]) weekMap[row.week] = { revenue:0, transactions:0, sessions:0, add_to_cart:0, _cvrSum:0, _cvrN:0 };
-      const w = weekMap[row.week];
-      w.revenue      += row.revenue || 0;
-      w.transactions += row.transactions || 0;
-      w.sessions     += row.sessions || 0;
-      w.add_to_cart  += row.add_to_cart || 0;
-      if (row.cvr != null) { w._cvrSum += row.cvr; w._cvrN++; }
+  function render(){
+    const df=fromEl.value||minD, dt=toEl.value||maxD;
+    const filtered=isoWeeks(S.categoryData,df,dt);
+    const weeks=uniqueSortedWeeks(filtered);
+    const wMap={};
+    filtered.forEach(r=>{
+      if(!wMap[r.week])wMap[r.week]={revenue:0,transactions:0,sessions:0,add_to_cart:0,_cs:0,_cn:0};
+      const w=wMap[r.week];
+      w.revenue+=r.revenue||0; w.transactions+=r.transactions||0; w.sessions+=r.sessions||0; w.add_to_cart+=r.add_to_cart||0;
+      if(r.cvr!=null){w._cs+=r.cvr;w._cn++;}
     });
-    const sitewideByWeek = weeks.map(w => weekMap[w] || {});
-
-    // ── Pills
-    const totRev = sitewideByWeek.reduce((s, r) => s + (r.revenue || 0), 0);
-    const totTx  = sitewideByWeek.reduce((s, r) => s + (r.transactions || 0), 0);
-    const totSess = sitewideByWeek.reduce((s, r) => s + (r.sessions || 0), 0);
-    const avgCvr = totSess ? (totTx / totSess * 100).toFixed(2) : '—';
-    document.getElementById('ov-pills').innerHTML = `
-      <div class="stat-pill"><div class="pill-label">Revenue</div><div class="pill-val">${fmt.currency(totRev)}</div><div class="pill-sub">in selected period</div></div>
-      <div class="stat-pill"><div class="pill-label">Orders</div><div class="pill-val">${fmt.num(totTx)}</div><div class="pill-sub">transactions</div></div>
-      <div class="stat-pill"><div class="pill-label">Sessions</div><div class="pill-val">${fmt.num(totSess)}</div><div class="pill-sub">unique sessions</div></div>
-      <div class="stat-pill"><div class="pill-label">CVR</div><div class="pill-val">${avgCvr}%</div><div class="pill-sub">avg conversion rate</div></div>
-    `;
-
-    const anns = changeAnnotations(STATE.meta.delivery_changes, weeks);
-    const metricLabel = { revenue:'£', transactions:'', sessions:'', cvr:'%', add_to_cart:'' };
-
-    // ── Sitewide chart
-    const sitewideVals = sitewideByWeek.map(r => {
-      if (activeMetric === 'cvr') return r._cvrN ? +(r._cvrSum / r._cvrN).toFixed(3) : 0;
-      return r[activeMetric] || 0;
+    const sw=weeks.map(w=>wMap[w]||{});
+    const totR=sw.reduce((s,r)=>s+(r.revenue||0),0);
+    const totT=sw.reduce((s,r)=>s+(r.transactions||0),0);
+    const totS=sw.reduce((s,r)=>s+(r.sessions||0),0);
+    const avgC=totS?(totT/totS*100).toFixed(2):'—';
+    document.getElementById('ov-pills').innerHTML=`
+      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.£(totR)}</div><div class="ps">selected period</div></div>
+      <div class="pill"><div class="pl">Orders</div><div class="pv">${fmt.n(totT)}</div><div class="ps">transactions</div></div>
+      <div class="pill"><div class="pl">Sessions</div><div class="pv">${fmt.n(totS)}</div><div class="ps">unique sessions</div></div>
+      <div class="pill"><div class="pl">CVR</div><div class="pv">${avgC}%</div><div class="ps">avg conversion</div></div>`;
+    const anns=changeAnnotations(weeks);
+    const vals=sw.map(r=>metric==='cvr'?(r._cn?+(r._cs/r._cn).toFixed(3):0):r[metric]||0);
+    const yL=metric==='revenue'?'£':metric==='cvr'?'%':'';
+    buildLineChart('ov-sitewide',weeks,[{label:metric.replace('_',' '),data:vals,borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:2}],anns,yL);
+    const cvrVals=sw.map(r=>r._cn?+(r._cs/r._cn).toFixed(3):0);
+    buildLineChart('ov-cvr',weeks,[{label:'CVR %',data:cvrVals,borderColor:'#C8A96E',backgroundColor:'rgba(200,169,110,0.08)',fill:true,tension:0.3,pointRadius:2}],anns,'%');
+    const last12=new Set(weeks.slice(-12));
+    const catAgg={};
+    S.categoryData.filter(d=>last12.has(d.week)).forEach(r=>{
+      if(!catAgg[r.category])catAgg[r.category]=0;
+      catAgg[r.category]+=(r.revenue||0);
     });
-    buildLineChart('ov-sitewide-chart', weeks,
-      [{ label: activeMetric.replace('_',' '), data: sitewideVals, borderColor: '#1A2A49', backgroundColor: 'rgba(26,42,73,0.07)', fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 5 }],
-      anns, metricLabel[activeMetric] || ''
-    );
-
-    // ── CVR chart
-    const cvrVals = sitewideByWeek.map(r => r._cvrN ? +(r._cvrSum / r._cvrN).toFixed(3) : 0);
-    buildLineChart('ov-cvr-chart', weeks,
-      [{ label: 'CVR %', data: cvrVals, borderColor: '#C8A96E', backgroundColor: 'rgba(200,169,110,0.08)', fill: true, tension: 0.3, pointRadius: 2 }],
-      anns, '%'
-    );
-
-    // ── Top categories bar (latest 12 weeks)
-    const last12Weeks = new Set(weeks.slice(-12));
-    const catAgg = aggregateBy(STATE.categoryData, 'category', 'revenue', last12Weeks)
-      .sort((a,b) => b.revenue - a.revenue).slice(0, 10);
-    buildBarChart('ov-cat-bar-chart',
-      catAgg.map(r => r.key || '(not set)'),
-      { label: 'Revenue', data: catAgg.map(r => r.revenue), backgroundColor: '#1A2A49' },
-      '£'
-    );
+    const top10=Object.entries(catAgg).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const ctx=document.getElementById('ov-cat-bar');
+    if(S.charts['ov-cat-bar'])S.charts['ov-cat-bar'].destroy();
+    S.charts['ov-cat-bar']=new Chart(ctx,{type:'bar',data:{labels:top10.map(x=>x[0]),datasets:[{label:'Revenue',data:top10.map(x=>x[1]),backgroundColor:'#1A2A49'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},callback:v=>'£'+v.toLocaleString('en-GB')},grid:{color:'#F0EDE8'}},y:{ticks:{font:{size:11}},grid:{display:false}}}}});
   }
 
-  // Metric tab toggle
-  document.getElementById('ov-metric-tabs').querySelectorAll('.metric-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('ov-metric-tabs').querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      activeMetric = btn.dataset.metric;
-      render();
+  document.getElementById('ov-metric-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('ov-metric-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); metric=btn.dataset.metric; render();
     });
   });
-
-  fromEl.addEventListener('change', render);
-  toEl.addEventListener('change', render);
-  document.getElementById('ov-reset').addEventListener('click', () => {
-    fromEl.value = minDate; toEl.value = maxDate; render();
-  });
-
+  fromEl.addEventListener('change',render); toEl.addEventListener('change',render);
+  document.getElementById('ov-reset').addEventListener('click',()=>{fromEl.value=minD;toEl.value=maxD;render();});
   render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  CATEGORY
 // ═══════════════════════════════════════════════════════
+function initCategory(){
+  buildLegend('cat-legend');
+  const allWeeks=uniqueSortedWeeks(S.categoryData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const cats=[...new Set(S.categoryData.map(d=>d.category).filter(Boolean))].sort();
+  const sel=document.getElementById('cat-sel');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  const metSel=document.getElementById('cat-metric-sel');
+  const fromEl=document.getElementById('cat-from'),toEl=document.getElementById('cat-to');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
-function initCategory() {
-  const allWeeks = uniqueSortedWeeks(STATE.categoryData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
-
-  // Populate category dropdown
-  const categories = [...new Set(STATE.categoryData.map(d => d.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('cat-select');
-  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  const metricSel   = document.getElementById('cat-metric-select');
-  const fromEl      = document.getElementById('cat-dateFrom');
-  const toEl        = document.getElementById('cat-dateTo');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  function render() {
-    const selectedCat = catSel.value;
-    const metric      = metricSel.value;
-    const df          = fromEl.value || minDate;
-    const dt          = toEl.value   || maxDate;
-    const filteredData = isoWeeks(STATE.categoryData, df, dt).filter(d => !selectedCat || d.category === selectedCat);
-    const weeks = uniqueSortedWeeks(filteredData);
-    const anns  = changeAnnotations(STATE.meta.delivery_changes, weeks);
-
-    // Build per-category weekly series
-    const catsToShow = selectedCat ? [selectedCat] :
-      [...new Set(filteredData.map(d => d.category).filter(Boolean))]
-        .map(c => ({ c, rev: filteredData.filter(r => r.category === c).reduce((s,r) => s + (r.revenue||0), 0) }))
-        .sort((a,b) => b.rev - a.rev).slice(0, 10).map(x => x.c);
-
-    const datasets = catsToShow.map((cat, i) => {
-      const catRows = filteredData.filter(r => r.category === cat);
-      const weekMap = {};
-      catRows.forEach(r => { weekMap[r.week] = r; });
-      const vals = weeks.map(w => {
-        const r = weekMap[w];
-        if (!r) return null;
-        if (metric === 'cvr') return r.cvr;
-        return r[metric] || 0;
-      });
-      return {
-        label: cat, data: vals,
-        borderColor: LINE_PALETTE[i % LINE_PALETTE.length],
-        backgroundColor: 'transparent',
-        tension: 0.3, pointRadius: 2, pointHoverRadius: 5,
-        spanGaps: true,
-      };
+  function render(){
+    const cat=sel.value,metric=metSel.value,df=fromEl.value||minD,dt=toEl.value||maxD;
+    const filtered=isoWeeks(S.categoryData,df,dt).filter(d=>!cat||d.category===cat);
+    const weeks=uniqueSortedWeeks(filtered);
+    const anns=changeAnnotations(weeks);
+    const catsToShow=cat?[cat]:[...new Set(filtered.map(d=>d.category).filter(Boolean))].map(c=>({c,rev:filtered.filter(r=>r.category===c).reduce((s,r)=>s+(r.revenue||0),0)})).sort((a,b)=>b.rev-a.rev).slice(0,10).map(x=>x.c);
+    const datasets=catsToShow.map((c,i)=>{
+      const wm={};filtered.filter(r=>r.category===c).forEach(r=>{wm[r.week]=r;});
+      return{label:c,data:weeks.map(w=>{const r=wm[w];return r?(metric==='cvr'?r.cvr:r[metric]||0):null;}),borderColor:LINE_PALETTE[i%LINE_PALETTE.length],backgroundColor:'transparent',tension:0.3,pointRadius:2,spanGaps:true};
     });
-
-    const yLabel = { revenue:'£', cvr:'%', add_to_cart:'', sessions:'', transactions:'', began_checkout:'' }[metric] || '';
-    document.getElementById('cat-chart-title').textContent = selectedCat ? `${selectedCat} — weekly ${metric.replace('_',' ')}` : `Top 10 categories — weekly ${metric.replace('_',' ')}`;
-    buildLineChart('cat-trend-chart', weeks, datasets, anns, yLabel);
-
-    // Table — aggregate across filtered date range
-    const allFilteredWeeks = new Set(isoWeeks(STATE.categoryData, df, dt).map(d => d.week));
-    const catAgg = aggregateBy(STATE.categoryData, 'category', metric, allFilteredWeeks)
-      .filter(r => !selectedCat || r.key === selectedCat)
-      .sort((a,b) => {
-        const av = a[STATE.catSortCol] || 0, bv = b[STATE.catSortCol] || 0;
-        return STATE.catSortDir === 'desc' ? bv - av : av - bv;
-      });
-    const tbody = document.getElementById('cat-table-body');
-    tbody.innerHTML = catAgg.map(r => `
-      <tr>
-        <td class="name">${r.key || '(not set)'}</td>
-        <td class="num">${fmt.num(r.sessions)}</td>
-        <td class="num">${fmt.currency(r.revenue)}</td>
-        <td class="num">${fmt.num(r.transactions)}</td>
-        <td class="num">${fmt.pct(r.cvr)}</td>
-        <td class="num">${fmt.num(r.add_to_cart)}</td>
-      </tr>
-    `).join('');
+    const yL=metric==='revenue'?'£':metric==='cvr'?'%':'';
+    document.getElementById('cat-chart-title').textContent=cat?`${cat} — weekly ${metric.replace(/_/g,' ')}`:`Top 10 categories — weekly ${metric.replace(/_/g,' ')}`;
+    buildLineChart('cat-trend',weeks,datasets,anns,yL);
+    const allW=new Set(isoWeeks(S.categoryData,df,dt).map(d=>d.week));
+    const agg={};
+    S.categoryData.filter(d=>allW.has(d.week)&&(!cat||d.category===cat)).forEach(r=>{
+      if(!agg[r.category])agg[r.category]={category:r.category,revenue:0,transactions:0,sessions:0,add_to_cart:0,_cs:0,_cn:0};
+      const e=agg[r.category];e.revenue+=r.revenue||0;e.transactions+=r.transactions||0;e.sessions+=r.sessions||0;e.add_to_cart+=r.add_to_cart||0;
+      if(r.cvr!=null){e._cs+=r.cvr;e._cn++;}
+    });
+    const rows=Object.values(agg).map(r=>({...r,cvr:r._cn?+(r._cs/r._cn).toFixed(3):0})).sort((a,b)=>{const av=a[S.catSortCol]||0,bv=b[S.catSortCol]||0;return S.catSortDir==='desc'?bv-av:av-bv;});
+    document.getElementById('cat-tbody').innerHTML=rows.map(r=>`<tr><td class="name">${r.category||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
   }
 
-  // Table sort
-  document.getElementById('cat-table').querySelectorAll('th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      STATE.catSortDir = (STATE.catSortCol === col && STATE.catSortDir === 'desc') ? 'asc' : 'desc';
-      STATE.catSortCol = col;
-      document.getElementById('cat-table').querySelectorAll('th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
-      th.classList.add(STATE.catSortDir === 'desc' ? 'sort-desc' : 'sort-asc');
-      render();
-    });
-  });
-
-  catSel.addEventListener('change', render);
-  metricSel.addEventListener('change', render);
-  fromEl.addEventListener('change', render);
-  toEl.addEventListener('change', render);
-  document.getElementById('cat-reset').addEventListener('click', () => {
-    catSel.value = ''; fromEl.value = minDate; toEl.value = maxDate; render();
-  });
-
+  makeSortableTable('cat-table','catSortCol','catSortDir',render);
+  sel.addEventListener('change',render);metSel.addEventListener('change',render);fromEl.addEventListener('change',render);toEl.addEventListener('change',render);
+  document.getElementById('cat-reset').addEventListener('click',()=>{sel.value='';fromEl.value=minD;toEl.value=maxD;render();});
   render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  SUBCATEGORY
 // ═══════════════════════════════════════════════════════
+function initSubcategory(){
+  buildLegend('subcat-legend');
+  const allWeeks=uniqueSortedWeeks(S.subcategoryData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const cats=[...new Set(S.subcategoryData.map(d=>d.category).filter(Boolean))].sort();
+  const catSel=document.getElementById('subcat-cat-sel');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+  const subcatSel=document.getElementById('subcat-sel');
+  const metSel=document.getElementById('subcat-metric-sel');
+  const fromEl=document.getElementById('subcat-from'),toEl=document.getElementById('subcat-to');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
-function initSubcategory() {
-  const allWeeks = uniqueSortedWeeks(STATE.subcategoryData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
-
-  const categories = [...new Set(STATE.subcategoryData.map(d => d.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('subcat-cat-select');
-  categories.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  const subcatSel  = document.getElementById('subcat-select');
-  const metricSel  = document.getElementById('subcat-metric-select');
-  const fromEl     = document.getElementById('subcat-dateFrom');
-  const toEl       = document.getElementById('subcat-dateTo');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  function populateSubcatDropdown(cat) {
-    subcatSel.innerHTML = '<option value="">All subcategories</option>';
-    const subcats = [...new Set(STATE.subcategoryData.filter(d => !cat || d.category === cat).map(d => d.subcategory).filter(Boolean))].sort();
-    subcats.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; subcatSel.appendChild(o); });
+  function popSubcats(cat){
+    subcatSel.innerHTML='<option value="">All subcategories</option>';
+    const subs=[...new Set(S.subcategoryData.filter(d=>!cat||d.category===cat).map(d=>d.subcategory).filter(Boolean))].sort();
+    subs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;subcatSel.appendChild(o);});
   }
-  populateSubcatDropdown('');
+  popSubcats('');
+  catSel.addEventListener('change',()=>{popSubcats(catSel.value);render();});
 
-  catSel.addEventListener('change', () => { populateSubcatDropdown(catSel.value); render(); });
-
-  function render() {
-    const cat      = catSel.value;
-    const subcat   = subcatSel.value;
-    const metric   = metricSel.value;
-    const df       = fromEl.value || minDate;
-    const dt       = toEl.value   || maxDate;
-    const filtered = isoWeeks(STATE.subcategoryData, df, dt).filter(d =>
-      (!cat    || d.category    === cat) &&
-      (!subcat || d.subcategory === subcat)
-    );
-    const weeks = uniqueSortedWeeks(filtered);
-    const anns  = changeAnnotations(STATE.meta.delivery_changes, weeks);
-
-    const subcatsToShow = subcat ? [subcat] :
-      [...new Set(filtered.map(d => d.subcategory).filter(Boolean))]
-        .map(s => ({ s, rev: filtered.filter(r => r.subcategory === s).reduce((a,r) => a + (r.revenue||0), 0) }))
-        .sort((a,b) => b.rev - a.rev).slice(0, 8).map(x => x.s);
-
-    const datasets = subcatsToShow.map((sc, i) => {
-      const rows = filtered.filter(r => r.subcategory === sc);
-      const wm = {}; rows.forEach(r => { wm[r.week] = r; });
-      return {
-        label: sc,
-        data: weeks.map(w => { const r = wm[w]; return r ? (metric === 'cvr' ? r.cvr : r[metric] || 0) : null; }),
-        borderColor: LINE_PALETTE[i % LINE_PALETTE.length],
-        backgroundColor: 'transparent',
-        tension: 0.3, pointRadius: 2, spanGaps: true,
-      };
+  function render(){
+    const cat=catSel.value,sub=subcatSel.value,metric=metSel.value,df=fromEl.value||minD,dt=toEl.value||maxD;
+    const filtered=isoWeeks(S.subcategoryData,df,dt).filter(d=>(!cat||d.category===cat)&&(!sub||d.subcategory===sub));
+    const weeks=uniqueSortedWeeks(filtered);
+    const anns=changeAnnotations(weeks);
+    const subsToShow=sub?[sub]:[...new Set(filtered.map(d=>d.subcategory).filter(Boolean))].map(s=>({s,rev:filtered.filter(r=>r.subcategory===s).reduce((a,r)=>a+(r.revenue||0),0)})).sort((a,b)=>b.rev-a.rev).slice(0,8).map(x=>x.s);
+    const datasets=subsToShow.map((sc,i)=>{
+      const wm={};filtered.filter(r=>r.subcategory===sc).forEach(r=>{wm[r.week]=r;});
+      return{label:sc,data:weeks.map(w=>{const r=wm[w];return r?(metric==='cvr'?r.cvr:r[metric]||0):null;}),borderColor:LINE_PALETTE[i%LINE_PALETTE.length],backgroundColor:'transparent',tension:0.3,pointRadius:2,spanGaps:true};
     });
-
-    const yLabel = { revenue:'£', cvr:'%' }[metric] || '';
-    buildLineChart('subcat-trend-chart', weeks, datasets, anns, yLabel);
-
-    // Table
-    const allWeeksSet = new Set(isoWeeks(STATE.subcategoryData, df, dt).map(d => d.week));
-    const rows = STATE.subcategoryData.filter(d =>
-      allWeeksSet.has(d.week) &&
-      (!cat || d.category === cat) &&
-      (!subcat || d.subcategory === subcat)
-    );
-    const subMap = {};
-    rows.forEach(r => {
-      const k = `${r.category}|||${r.subcategory}`;
-      if (!subMap[k]) subMap[k] = { category: r.category, subcategory: r.subcategory, revenue:0, transactions:0, sessions:0, add_to_cart:0, _cvrSum:0, _cvrN:0 };
-      const e = subMap[k];
-      e.revenue += r.revenue || 0; e.transactions += r.transactions || 0; e.sessions += r.sessions || 0; e.add_to_cart += r.add_to_cart || 0;
-      if (r.cvr != null) { e._cvrSum += r.cvr; e._cvrN++; }
+    buildLineChart('subcat-trend',weeks,datasets,anns,metric==='revenue'?'£':metric==='cvr'?'%':'');
+    const allW=new Set(isoWeeks(S.subcategoryData,df,dt).map(d=>d.week));
+    const agg={};
+    S.subcategoryData.filter(d=>allW.has(d.week)&&(!cat||d.category===cat)&&(!sub||d.subcategory===sub)).forEach(r=>{
+      const k=`${r.category}|||${r.subcategory}`;
+      if(!agg[k])agg[k]={category:r.category,subcategory:r.subcategory,revenue:0,transactions:0,sessions:0,add_to_cart:0,_cs:0,_cn:0};
+      const e=agg[k];e.revenue+=r.revenue||0;e.transactions+=r.transactions||0;e.sessions+=r.sessions||0;e.add_to_cart+=r.add_to_cart||0;
+      if(r.cvr!=null){e._cs+=r.cvr;e._cn++;}
     });
-    const tableRows = Object.values(subMap).map(r => ({ ...r, cvr: r._cvrN ? +(r._cvrSum/r._cvrN).toFixed(3) : 0 }))
-      .sort((a,b) => {
-        const av = a[STATE.subcatSortCol]||0, bv = b[STATE.subcatSortCol]||0;
-        return STATE.subcatSortDir === 'desc' ? bv - av : av - bv;
-      });
-
-    document.getElementById('subcat-table-body').innerHTML = tableRows.map(r => `
-      <tr>
-        <td class="cat-tag">${r.category || ''}</td>
-        <td class="name">${r.subcategory || '(not set)'}</td>
-        <td class="num">${fmt.num(r.sessions)}</td>
-        <td class="num">${fmt.currency(r.revenue)}</td>
-        <td class="num">${fmt.num(r.transactions)}</td>
-        <td class="num">${fmt.pct(r.cvr)}</td>
-        <td class="num">${fmt.num(r.add_to_cart)}</td>
-      </tr>
-    `).join('');
+    const rows=Object.values(agg).map(r=>({...r,cvr:r._cn?+(r._cs/r._cn).toFixed(3):0})).sort((a,b)=>{const av=a[S.subcatSortCol]||0,bv=b[S.subcatSortCol]||0;return S.subcatSortDir==='desc'?bv-av:av-bv;});
+    document.getElementById('subcat-tbody').innerHTML=rows.map(r=>`<tr><td class="tag">${r.category||''}</td><td class="name">${r.subcategory||'(not set)'}</td><td class="num">${fmt.n(r.sessions)}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.pct(r.cvr)}</td><td class="num">${fmt.n(r.add_to_cart)}</td></tr>`).join('');
   }
 
-  document.getElementById('subcat-table').querySelectorAll('th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      STATE.subcatSortDir = (STATE.subcatSortCol === col && STATE.subcatSortDir === 'desc') ? 'asc' : 'desc';
-      STATE.subcatSortCol = col;
-      document.getElementById('subcat-table').querySelectorAll('th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
-      th.classList.add(STATE.subcatSortDir === 'desc' ? 'sort-desc' : 'sort-asc');
-      render();
-    });
-  });
-
-  subcatSel.addEventListener('change', render);
-  metricSel.addEventListener('change', render);
-  fromEl.addEventListener('change', render);
-  toEl.addEventListener('change', render);
-  document.getElementById('subcat-reset').addEventListener('click', () => {
-    catSel.value = ''; subcatSel.value = ''; fromEl.value = minDate; toEl.value = maxDate;
-    populateSubcatDropdown(''); render();
-  });
-
+  makeSortableTable('subcat-table','subcatSortCol','subcatSortDir',render);
+  subcatSel.addEventListener('change',render);metSel.addEventListener('change',render);fromEl.addEventListener('change',render);toEl.addEventListener('change',render);
+  document.getElementById('subcat-reset').addEventListener('click',()=>{catSel.value='';subcatSel.value='';fromEl.value=minD;toEl.value=maxD;popSubcats('');render();});
   render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  PRODUCT
 // ═══════════════════════════════════════════════════════
+function initProduct(){
+  buildLegend('prod-legend');
+  const allWeeks=uniqueSortedWeeks(S.productData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const cats=[...new Set(S.productData.map(d=>d.category).filter(Boolean))].sort();
+  const catSel=document.getElementById('prod-cat-sel');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+  const fromEl=document.getElementById('prod-from'),toEl=document.getElementById('prod-to');
+  const searchEl=document.getElementById('prod-search');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
-function initProduct() {
-  const allWeeks = uniqueSortedWeeks(STATE.productData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
-
-  // Category filter
-  const cats = [...new Set(STATE.productData.map(d => d.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('prod-cat-select');
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  const fromEl  = document.getElementById('prod-dateFrom');
-  const toEl    = document.getElementById('prod-dateTo');
-  const searchEl = document.getElementById('prod-search');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  function getFilteredRows() {
-    const cat    = catSel.value;
-    const df     = fromEl.value || minDate;
-    const dt     = toEl.value   || maxDate;
-    const srch   = searchEl.value.toLowerCase();
-    const weeks  = new Set(isoWeeks(STATE.productData, df, dt).map(d => d.week));
-    return STATE.productData.filter(d =>
-      weeks.has(d.week) &&
-      (!cat || d.category === cat) &&
-      (!srch || (d.product_name || '').toLowerCase().includes(srch))
-    );
-  }
-
-  function renderTable() {
-    const filtered = getFilteredRows();
-    // Aggregate by product
-    const prodMap = {};
-    filtered.forEach(r => {
-      const k = r.product_name;
-      if (!k) return;
-      if (!prodMap[k]) prodMap[k] = { product_name:k, category:r.category, subcategory:r.subcategory, revenue:0, transactions:0, units_sold:0, add_to_cart:0, product_views:0, _pdpCvrSum:0, _pdpCvrN:0 };
-      const e = prodMap[k];
-      e.revenue += r.revenue || 0; e.transactions += r.transactions || 0;
-      e.units_sold += r.units_sold || 0; e.add_to_cart += r.add_to_cart || 0;
-      e.product_views += r.product_views || 0;
-      if (r.pdp_cvr != null) { e._pdpCvrSum += r.pdp_cvr; e._pdpCvrN++; }
+  function renderTable(){
+    const cat=catSel.value,df=fromEl.value||minD,dt=toEl.value||maxD,srch=searchEl.value.toLowerCase();
+    const weeks=new Set(isoWeeks(S.productData,df,dt).map(d=>d.week));
+    const filtered=S.productData.filter(d=>weeks.has(d.week)&&(!cat||d.category===cat)&&(!srch||(d.product_name||'').toLowerCase().includes(srch)));
+    const pm={};
+    filtered.forEach(r=>{
+      const k=r.product_name;if(!k)return;
+      if(!pm[k])pm[k]={product_name:k,category:r.category,revenue:0,transactions:0,units_sold:0,add_to_cart:0,product_views:0,_pvs:0,_pvn:0};
+      const e=pm[k];e.revenue+=r.revenue||0;e.transactions+=r.transactions||0;e.units_sold+=r.units_sold||0;e.add_to_cart+=r.add_to_cart||0;e.product_views+=r.product_views||0;
+      if(r.pdp_cvr!=null){e._pvs+=r.pdp_cvr;e._pvn++;}
     });
-    const rows = Object.values(prodMap)
-      .map(r => ({ ...r, pdp_cvr: r._pdpCvrN ? +(r._pdpCvrSum/r._pdpCvrN).toFixed(3) : 0 }))
-      .sort((a,b) => {
-        const av = a[STATE.productSortCol]||0, bv = b[STATE.productSortCol]||0;
-        return STATE.productSortDir === 'desc' ? bv - av : av - bv;
-      })
-      .slice(0, 200);
-
-    document.getElementById('prod-count').textContent = `Top ${rows.length} products`;
-    document.getElementById('prod-table-body').innerHTML = rows.map(r => `
-      <tr style="cursor:pointer" data-product="${(r.product_name||'').replace(/"/g,'&quot;')}">
-        <td class="name">${r.product_name || '(unknown)'}</td>
-        <td class="cat-tag">${r.category || ''}</td>
-        <td class="num">${fmt.currency(r.revenue)}</td>
-        <td class="num">${fmt.num(r.transactions)}</td>
-        <td class="num">${fmt.num(r.units_sold)}</td>
-        <td class="num">${fmt.num(r.add_to_cart)}</td>
-        <td class="num">${fmt.pct(r.pdp_cvr)}</td>
-      </tr>
-    `).join('');
-
-    // Row click → product chart
-    document.getElementById('prod-table-body').querySelectorAll('tr').forEach(row => {
-      row.addEventListener('click', () => {
-        STATE.selectedProduct = row.dataset.product;
-        document.getElementById('prod-table-body').querySelectorAll('tr').forEach(r => r.style.background = '');
-        row.style.background = '#E8D5A8';
-        renderProductChart();
+    const rows=Object.values(pm).map(r=>({...r,pdp_cvr:r._pvn?+(r._pvs/r._pvn).toFixed(3):0})).sort((a,b)=>{const av=a[S.prodSortCol]||0,bv=b[S.prodSortCol]||0;return S.prodSortDir==='desc'?bv-av:av-bv;}).slice(0,200);
+    document.getElementById('prod-count').textContent=`Top ${rows.length} products`;
+    document.getElementById('prod-tbody').innerHTML=rows.map(r=>`<tr style="cursor:pointer" data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}"><td class="name">${r.product_name||''}</td><td class="tag">${r.category||''}</td><td class="num">${fmt.£(r.revenue)}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.n(r.units_sold)}</td><td class="num">${fmt.n(r.add_to_cart)}</td><td class="num">${fmt.pct(r.pdp_cvr)}</td></tr>`).join('');
+    document.getElementById('prod-tbody').querySelectorAll('tr').forEach(row=>{
+      row.addEventListener('click',()=>{
+        document.getElementById('prod-tbody').querySelectorAll('tr').forEach(r=>r.style.background='');
+        row.style.background='#E8D5A8';
+        renderProdChart(row.dataset.prod);
       });
     });
   }
 
-  function renderProductChart() {
-    const prod = STATE.selectedProduct;
-    if (!prod) return;
-    const df = fromEl.value || minDate;
-    const dt = toEl.value || maxDate;
-    const prodRows = isoWeeks(STATE.productData.filter(d => d.product_name === prod), df, dt);
-    const weeks = uniqueSortedWeeks(prodRows);
-    const wm = {}; prodRows.forEach(r => { wm[r.week] = r; });
-    const metric = STATE.prodMetric;
-    const vals = weeks.map(w => { const r = wm[w]; return r ? (r[metric] || 0) : null; });
-    const anns  = changeAnnotations(STATE.meta.delivery_changes, weeks);
-    const yLabel = { revenue:'£', pdp_cvr:'%' }[metric] || '';
-
-    document.getElementById('prod-chart-card').style.display = '';
-    document.getElementById('prod-chart-title').textContent = prod;
-    buildLineChart('prod-trend-chart', weeks,
-      [{ label: metric.replace('_',' '), data: vals, borderColor: '#1A2A49', backgroundColor: 'rgba(26,42,73,0.07)', fill: true, tension: 0.3, pointRadius: 3, spanGaps: true }],
-      anns, yLabel
-    );
+  function renderProdChart(prod){
+    const df=fromEl.value||minD,dt=toEl.value||maxD;
+    const rows=isoWeeks(S.productData.filter(d=>d.product_name===prod),df,dt);
+    const weeks=uniqueSortedWeeks(rows);
+    const wm={};rows.forEach(r=>{wm[r.week]=r;});
+    const anns=changeAnnotations(weeks);
+    const metric=S.prodMetric;
+    const yL=metric==='revenue'?'£':metric==='pdp_cvr'?'%':'';
+    document.getElementById('prod-chart-card').style.display='';
+    document.getElementById('prod-chart-title').textContent=prod;
+    buildLineChart('prod-trend',weeks,[{label:metric.replace(/_/g,' '),data:weeks.map(w=>wm[w]?wm[w][metric]||0:null),borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:3,spanGaps:true}],anns,yL);
   }
 
-  // Product metric tabs
-  document.getElementById('prod-metric-tabs').querySelectorAll('.metric-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('prod-metric-tabs').querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      STATE.prodMetric = btn.dataset.metric;
-      renderProductChart();
+  document.getElementById('prod-metric-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('prod-metric-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');S.prodMetric=btn.dataset.metric;
+      if(document.getElementById('prod-chart-card').style.display!=='none')renderProdChart(document.querySelector('#prod-tbody tr.row-selected')?.dataset.prod||'');
     });
   });
-
-  // Sort
-  document.getElementById('prod-table').querySelectorAll('th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      STATE.productSortDir = (STATE.productSortCol === col && STATE.productSortDir === 'desc') ? 'asc' : 'desc';
-      STATE.productSortCol = col;
-      document.getElementById('prod-table').querySelectorAll('th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
-      th.classList.add(STATE.productSortDir === 'desc' ? 'sort-desc' : 'sort-asc');
-      renderTable();
-    });
-  });
-
-  catSel.addEventListener('change', renderTable);
-  fromEl.addEventListener('change', renderTable);
-  toEl.addEventListener('change', renderTable);
-  let searchTimer;
-  searchEl.addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(renderTable, 250); });
-  document.getElementById('prod-reset').addEventListener('click', () => {
-    catSel.value = ''; searchEl.value = ''; fromEl.value = minDate; toEl.value = maxDate;
-    renderTable();
-  });
-
+  makeSortableTable('prod-table','prodSortCol','prodSortDir',renderTable);
+  catSel.addEventListener('change',renderTable);fromEl.addEventListener('change',renderTable);toEl.addEventListener('change',renderTable);
+  let t;searchEl.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(renderTable,250);});
+  document.getElementById('prod-reset').addEventListener('click',()=>{catSel.value='';searchEl.value='';fromEl.value=minD;toEl.value=maxD;renderTable();});
   renderTable();
 }
 
 // ═══════════════════════════════════════════════════════
 //  FUNNEL
 // ═══════════════════════════════════════════════════════
+function initFunnel(){
+  buildLegend('fn-legend');
+  const allWeeks=uniqueSortedWeeks(S.funnelData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const fromEl=document.getElementById('fn-from'),toEl=document.getElementById('fn-to');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
-function initFunnel() {
-  const allWeeks = uniqueSortedWeeks(STATE.funnelData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
-
-  const fromEl = document.getElementById('fn-dateFrom');
-  const toEl   = document.getElementById('fn-dateTo');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  function render() {
-    const df = fromEl.value || minDate;
-    const dt = toEl.value   || maxDate;
-    const filtered = isoWeeks(STATE.funnelData, df, dt);
-    const weeks = uniqueSortedWeeks(filtered);
-    const wm = {}; filtered.forEach(r => { wm[r.week] = r; });
-    const anns = changeAnnotations(STATE.meta.delivery_changes, weeks);
-
-    const get = (w, key) => (wm[w] ? wm[w][key] || 0 : 0);
-
-    // ── Pills
-    const totBC = filtered.reduce((s,r) => s + (r.begin_checkout||0), 0);
-    const totPurch = filtered.reduce((s,r) => s + (r.purchase||0), 0);
-    const totATC   = filtered.reduce((s,r) => s + (r.add_to_cart||0), 0);
-    const totSess  = filtered.reduce((s,r) => s + (r.sessions||0), 0);
-    const totShip  = filtered.reduce((s,r) => s + (r.add_shipping_info||0), 0);
-    document.getElementById('fn-pills').innerHTML = `
-      <div class="stat-pill"><div class="pill-label">Begin Checkout</div><div class="pill-val">${fmt.num(totBC)}</div><div class="pill-sub">events</div></div>
-      <div class="stat-pill"><div class="pill-label">Purchases</div><div class="pill-val">${fmt.num(totPurch)}</div><div class="pill-sub">completed</div></div>
-      <div class="stat-pill"><div class="pill-label">ATC→Checkout</div><div class="pill-val">${totATC ? (totBC/totATC*100).toFixed(1)+'%' : '—'}</div><div class="pill-sub">progression rate</div></div>
-      <div class="stat-pill"><div class="pill-label">Checkout→Buy</div><div class="pill-val">${totBC ? (totPurch/totBC*100).toFixed(1)+'%' : '—'}</div><div class="pill-sub">completion rate</div></div>
-      <div class="stat-pill"><div class="pill-label">Ship→Purchase</div><div class="pill-val">${totShip ? (totPurch/totShip*100).toFixed(1)+'%' : '—'}</div><div class="pill-sub">after seeing delivery cost</div></div>
-    `;
-
-    // ── Begin checkout volume
-    buildLineChart('fn-checkout-chart', weeks,
-      [{ label: 'Begin checkout', data: weeks.map(w => get(w,'begin_checkout')), borderColor:'#1A2A49', backgroundColor:'rgba(26,42,73,0.07)', fill:true, tension:0.3, pointRadius:2 }],
-      anns, ''
-    );
-
-    // ── Drop-off rates (% of begin_checkout)
-    buildLineChart('fn-dropoff-chart', weeks,
-      [
-        { label:'Add shipping info %', data: weeks.map(w => { const bc=get(w,'begin_checkout'); const si=get(w,'add_shipping_info'); return bc ? +(si/bc*100).toFixed(2) : null; }), borderColor:'#E67E22', tension:0.3, pointRadius:2, spanGaps:true },
-        { label:'Add payment info %',  data: weeks.map(w => { const bc=get(w,'begin_checkout'); const pi=get(w,'add_payment_info'); return bc ? +(pi/bc*100).toFixed(2) : null; }), borderColor:'#8E44AD', tension:0.3, pointRadius:2, spanGaps:true },
-        { label:'Purchase %',          data: weeks.map(w => { const bc=get(w,'begin_checkout'); const p=get(w,'purchase'); return bc ? +(p/bc*100).toFixed(2) : null; }), borderColor:'#2D8A5F', tension:0.3, pointRadius:2, spanGaps:true },
-      ], anns, '%'
-    );
-
-    // ── ATC → checkout rate
-    buildLineChart('fn-atc-checkout-chart', weeks,
-      [{ label:'ATC → Begin Checkout %', data: weeks.map(w => { const atc=get(w,'add_to_cart'); const bc=get(w,'begin_checkout'); return atc ? +(bc/atc*100).toFixed(2) : null; }), borderColor:'#C8A96E', tension:0.3, pointRadius:2, spanGaps:true, fill:false }],
-      anns, '%'
-    );
-
-    // ── Ship → purchase rate
-    buildLineChart('fn-shipping-purchase-chart', weeks,
-      [{ label:'Shipping info → Purchase %', data: weeks.map(w => { const si=get(w,'add_shipping_info'); const p=get(w,'purchase'); return si ? +(p/si*100).toFixed(2) : null; }), borderColor:'#C0392B', tension:0.3, pointRadius:2, spanGaps:true, fill:false }],
-      anns, '%'
-    );
+  function render(){
+    const df=fromEl.value||minD,dt=toEl.value||maxD;
+    const filtered=isoWeeks(S.funnelData,df,dt);
+    const weeks=uniqueSortedWeeks(filtered);
+    const wm={};filtered.forEach(r=>{wm[r.week]=r;});
+    const anns=changeAnnotations(weeks);
+    const g=(w,k)=>wm[w]?wm[w][k]||0:0;
+    const totBC=filtered.reduce((s,r)=>s+(r.begin_checkout||0),0);
+    const totP=filtered.reduce((s,r)=>s+(r.purchase||0),0);
+    const totA=filtered.reduce((s,r)=>s+(r.add_to_cart||0),0);
+    const totSh=filtered.reduce((s,r)=>s+(r.add_shipping_info||0),0);
+    document.getElementById('fn-pills').innerHTML=`
+      <div class="pill"><div class="pl">Begin Checkout</div><div class="pv">${fmt.n(totBC)}</div></div>
+      <div class="pill"><div class="pl">Purchases</div><div class="pv">${fmt.n(totP)}</div></div>
+      <div class="pill"><div class="pl">ATC→Checkout</div><div class="pv">${totA?(totBC/totA*100).toFixed(1)+'%':'—'}</div></div>
+      <div class="pill"><div class="pl">Checkout→Buy</div><div class="pv">${totBC?(totP/totBC*100).toFixed(1)+'%':'—'}</div></div>
+      <div class="pill"><div class="pl">Ship→Purchase</div><div class="pv">${totSh?(totP/totSh*100).toFixed(1)+'%':'—'}</div></div>`;
+    buildLineChart('fn-checkout',weeks,[{label:'Begin checkout',data:weeks.map(w=>g(w,'begin_checkout')),borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:2}],anns,'');
+    buildLineChart('fn-dropoff',weeks,[
+      {label:'Add shipping info %',data:weeks.map(w=>{const bc=g(w,'begin_checkout');return bc?+(g(w,'add_shipping_info')/bc*100).toFixed(2):null;}),borderColor:'#E67E22',tension:0.3,pointRadius:2,spanGaps:true},
+      {label:'Add payment info %',data:weeks.map(w=>{const bc=g(w,'begin_checkout');return bc?+(g(w,'add_payment_info')/bc*100).toFixed(2):null;}),borderColor:'#8E44AD',tension:0.3,pointRadius:2,spanGaps:true},
+      {label:'Purchase %',data:weeks.map(w=>{const bc=g(w,'begin_checkout');return bc?+(g(w,'purchase')/bc*100).toFixed(2):null;}),borderColor:'#2D8A5F',tension:0.3,pointRadius:2,spanGaps:true},
+    ],anns,'%');
+    buildLineChart('fn-atc',weeks,[{label:'ATC→Checkout %',data:weeks.map(w=>{const a=g(w,'add_to_cart');return a?+(g(w,'begin_checkout')/a*100).toFixed(2):null;}),borderColor:'#C8A96E',tension:0.3,pointRadius:2,spanGaps:true}],anns,'%');
+    buildLineChart('fn-ship',weeks,[{label:'Ship→Purchase %',data:weeks.map(w=>{const s=g(w,'add_shipping_info');return s?+(g(w,'purchase')/s*100).toFixed(2):null;}),borderColor:'#C0392B',tension:0.3,pointRadius:2,spanGaps:true}],anns,'%');
   }
 
-  fromEl.addEventListener('change', render);
-  toEl.addEventListener('change', render);
-  document.getElementById('fn-reset').addEventListener('click', () => { fromEl.value = minDate; toEl.value = maxDate; render(); });
-
+  fromEl.addEventListener('change',render);toEl.addEventListener('change',render);
+  document.getElementById('fn-reset').addEventListener('click',()=>{fromEl.value=minD;toEl.value=maxD;render();});
   render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  AOV
 // ═══════════════════════════════════════════════════════
-function initAOV() {
-  if (!STATE.aovData || !STATE.aovData.length) return;
-  const allWeeks = uniqueSortedWeeks(STATE.aovData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
+function initAOV(){
+  if(!S.aovData||!S.aovData.length)return;
+  buildLegend('aov-legend');
+  const allWeeks=uniqueSortedWeeks(S.aovData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const cats=[...new Set(S.aovData.map(d=>d.category).filter(Boolean))].sort();
+  const sel=document.getElementById('aov-cat-sel');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+  const fromEl=document.getElementById('aov-from'),toEl=document.getElementById('aov-to');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
 
-  const cats = [...new Set(STATE.aovData.map(d => d.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('aov-cat-select');
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  const fromEl = document.getElementById('aov-dateFrom');
-  const toEl   = document.getElementById('aov-dateTo');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  function render() {
-    const cat = catSel.value;
-    const df  = fromEl.value || minDate;
-    const dt  = toEl.value   || maxDate;
-    const filtered = isoWeeks(STATE.aovData, df, dt).filter(d => !cat || d.category === cat);
-    const weeks = uniqueSortedWeeks(filtered);
-    const anns  = changeAnnotations(STATE.meta.delivery_changes, weeks);
-
-    // Pills — site-wide AOV
-    const allFiltered = isoWeeks(STATE.aovData, df, dt);
-    const totRev = allFiltered.reduce((s,r) => s + (r.revenue||0), 0);
-    const totTx  = allFiltered.reduce((s,r) => s + (r.transactions||0), 0);
-    const siteAOV = totTx ? (totRev / totTx).toFixed(2) : '—';
-    document.getElementById('aov-pills').innerHTML = `
-      <div class="stat-pill"><div class="pill-label">Site AOV</div><div class="pill-val">£${Number(siteAOV).toLocaleString('en-GB',{minimumFractionDigits:0,maximumFractionDigits:0})}</div><div class="pill-sub">avg order value</div></div>
-      <div class="stat-pill"><div class="pill-label">Total Revenue</div><div class="pill-val">${fmt.currency(totRev)}</div><div class="pill-sub">selected period</div></div>
-      <div class="stat-pill"><div class="pill-label">Transactions</div><div class="pill-val">${fmt.num(totTx)}</div><div class="pill-sub">orders</div></div>
-    `;
-
-    // AOV trend — up to 8 categories or single
-    const catsToShow = cat ? [cat] :
-      [...new Set(filtered.map(d => d.category).filter(Boolean))]
-        .map(c => ({ c, rev: filtered.filter(r => r.category===c).reduce((s,r)=>s+(r.revenue||0),0) }))
-        .sort((a,b) => b.rev - a.rev).slice(0,8).map(x => x.c);
-
-    const datasets = catsToShow.map((c, i) => {
-      const rows = filtered.filter(r => r.category === c);
-      const wm = {}; rows.forEach(r => { wm[r.week] = r; });
-      return {
-        label: c,
-        data: weeks.map(w => wm[w] ? wm[w].aov : null),
-        borderColor: LINE_PALETTE[i % LINE_PALETTE.length],
-        backgroundColor: 'transparent',
-        tension: 0.3, pointRadius: 2, spanGaps: true,
-      };
+  function render(){
+    const cat=sel.value,df=fromEl.value||minD,dt=toEl.value||maxD;
+    const filtered=isoWeeks(S.aovData,df,dt).filter(d=>!cat||d.category===cat);
+    const weeks=uniqueSortedWeeks(filtered);
+    const anns=changeAnnotations(weeks);
+    const totR=isoWeeks(S.aovData,df,dt).reduce((s,r)=>s+(r.revenue||0),0);
+    const totT=isoWeeks(S.aovData,df,dt).reduce((s,r)=>s+(r.transactions||0),0);
+    document.getElementById('aov-pills').innerHTML=`
+      <div class="pill"><div class="pl">Site AOV</div><div class="pv">${totT?fmt.£(totR/totT):'—'}</div></div>
+      <div class="pill"><div class="pl">Revenue</div><div class="pv">${fmt.£(totR)}</div></div>
+      <div class="pill"><div class="pl">Orders</div><div class="pv">${fmt.n(totT)}</div></div>`;
+    const catsToShow=cat?[cat]:[...new Set(filtered.map(d=>d.category).filter(Boolean))].map(c=>({c,rev:filtered.filter(r=>r.category===c).reduce((s,r)=>s+(r.revenue||0),0)})).sort((a,b)=>b.rev-a.rev).slice(0,8).map(x=>x.c);
+    const datasets=catsToShow.map((c,i)=>{
+      const wm={};filtered.filter(r=>r.category===c).forEach(r=>{wm[r.week]=r;});
+      return{label:c,data:weeks.map(w=>wm[w]?wm[w].aov:null),borderColor:LINE_PALETTE[i%LINE_PALETTE.length],backgroundColor:'transparent',tension:0.3,pointRadius:2,spanGaps:true};
     });
-
-    document.getElementById('aov-chart-title').textContent = cat ? `${cat} — AOV weekly` : 'Top 8 categories — AOV weekly';
-    buildLineChart('aov-trend-chart', weeks, datasets, anns, '£');
-
-    // Indexed chart (only when single category selected)
-    if (cat && datasets[0]) {
-      const vals = datasets[0].data;
-      const base = vals.find(v => v != null);
-      const revRows = filtered.filter(d => d.category === cat);
-      const rwm = {}; revRows.forEach(r => { rwm[r.week] = r; });
-      const revVals = weeks.map(w => rwm[w] ? rwm[w].revenue : null);
-      const revBase = revVals.find(v => v != null);
-      const idxAov = vals.map(v => v && base ? +(v/base*100).toFixed(1) : null);
-      const idxRev = revVals.map(v => v && revBase ? +(v/revBase*100).toFixed(1) : null);
-      // Derive tx index
-      const txVals = weeks.map(w => rwm[w] ? rwm[w].transactions : null);
-      const txBase = txVals.find(v => v != null);
-      const idxTx = txVals.map(v => v && txBase ? +(v/txBase*100).toFixed(1) : null);
-
-      buildLineChart('aov-index-chart', weeks, [
-        { label: 'Revenue (indexed)', data: idxRev, borderColor: '#1A2A49', tension: 0.3, pointRadius: 2, spanGaps: true },
-        { label: 'Transactions (indexed)', data: idxTx, borderColor: '#C8A96E', tension: 0.3, pointRadius: 2, spanGaps: true },
-        { label: 'AOV (indexed)', data: idxAov, borderColor: '#E67E22', tension: 0.3, pointRadius: 2, spanGaps: true },
-      ], anns, '');
-    } else {
-      // Site-wide AOV by week
-      const siteMap = {};
-      isoWeeks(STATE.aovData, df, dt).forEach(r => {
-        if (!siteMap[r.week]) siteMap[r.week] = { rev:0, tx:0 };
-        siteMap[r.week].rev += r.revenue||0;
-        siteMap[r.week].tx  += r.transactions||0;
-      });
-      const swWeeks = Object.keys(siteMap).sort();
-      const swAOV = swWeeks.map(w => siteMap[w].tx ? +(siteMap[w].rev/siteMap[w].tx).toFixed(2) : null);
-      const swAnns = changeAnnotations(STATE.meta.delivery_changes, swWeeks);
-      buildLineChart('aov-index-chart', swWeeks,
-        [{ label: 'Site-wide AOV', data: swAOV, borderColor: '#1A2A49', backgroundColor:'rgba(26,42,73,0.07)', fill:true, tension:0.3, pointRadius:2 }],
-        swAnns, '£');
+    document.getElementById('aov-chart-title').textContent=cat?`${cat} — AOV weekly`:'Top 8 categories — AOV weekly';
+    buildLineChart('aov-trend',weeks,datasets,anns,'£');
+    if(cat&&datasets[0]){
+      const rows=filtered.filter(d=>d.category===cat);
+      const wm={};rows.forEach(r=>{wm[r.week]=r;});
+      const aovVals=weeks.map(w=>wm[w]?wm[w].aov:null);
+      const revVals=weeks.map(w=>wm[w]?wm[w].revenue:null);
+      const txVals=weeks.map(w=>wm[w]?wm[w].transactions:null);
+      const base=(v,arr)=>{const f=arr.find(x=>x!=null);return f?v/f*100:null;};
+      buildLineChart('aov-index',weeks,[
+        {label:'Revenue (indexed)',data:revVals.map(v=>base(v,revVals)),borderColor:'#1A2A49',tension:0.3,pointRadius:2,spanGaps:true},
+        {label:'Transactions (indexed)',data:txVals.map(v=>base(v,txVals)),borderColor:'#C8A96E',tension:0.3,pointRadius:2,spanGaps:true},
+        {label:'AOV (indexed)',data:aovVals.map(v=>base(v,aovVals)),borderColor:'#E67E22',tension:0.3,pointRadius:2,spanGaps:true},
+      ],anns,'');
+    }else{
+      const swm={};isoWeeks(S.aovData,df,dt).forEach(r=>{if(!swm[r.week])swm[r.week]={rev:0,tx:0};swm[r.week].rev+=r.revenue||0;swm[r.week].tx+=r.transactions||0;});
+      const sww=Object.keys(swm).sort();
+      buildLineChart('aov-index',sww,[{label:'Site AOV',data:sww.map(w=>swm[w].tx?+(swm[w].rev/swm[w].tx).toFixed(2):null),borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:2}],changeAnnotations(sww),'£');
     }
   }
 
-  catSel.addEventListener('change', render);
-  fromEl.addEventListener('change', render);
-  toEl.addEventListener('change', render);
-  document.getElementById('aov-reset').addEventListener('click', () => { catSel.value=''; fromEl.value=minDate; toEl.value=maxDate; render(); });
+  sel.addEventListener('change',render);fromEl.addEventListener('change',render);toEl.addEventListener('change',render);
+  document.getElementById('aov-reset').addEventListener('click',()=>{sel.value='';fromEl.value=minD;toEl.value=maxD;render();});
   render();
 }
 
 // ═══════════════════════════════════════════════════════
-//  UNITS PER TRANSACTION
+//  UNITS PER TX
 // ═══════════════════════════════════════════════════════
-function initUnits() {
-  if (!STATE.unitsData || !STATE.unitsData.length) return;
-  const allWeeks = uniqueSortedWeeks(STATE.unitsData);
-  const minDate = allWeeks[0], maxDate = allWeeks[allWeeks.length - 1];
+function initUnits(){
+  if(!S.unitsData||!S.unitsData.length)return;
+  buildLegend('units-legend');
+  const allWeeks=uniqueSortedWeeks(S.unitsData);
+  const minD=allWeeks[0],maxD=allWeeks[allWeeks.length-1];
+  const cats=[...new Set(S.unitsData.map(d=>d.category).filter(Boolean))].sort();
+  const catSel=document.getElementById('units-cat-sel');
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+  const fromEl=document.getElementById('units-from'),toEl=document.getElementById('units-to');
+  const searchEl=document.getElementById('units-search');
+  fromEl.value=minD;toEl.value=maxD;fromEl.min=minD;fromEl.max=maxD;toEl.min=minD;toEl.max=maxD;
+  let selProd=null;
 
-  const cats = [...new Set(STATE.unitsData.map(d => d.category).filter(Boolean))].sort();
-  const catSel = document.getElementById('units-cat-select');
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  const fromEl   = document.getElementById('units-dateFrom');
-  const toEl     = document.getElementById('units-dateTo');
-  const searchEl = document.getElementById('units-search');
-  fromEl.value = minDate; toEl.value = maxDate;
-  fromEl.min = minDate; fromEl.max = maxDate;
-  toEl.min = minDate; toEl.max = maxDate;
-
-  let unitsSortCol = 'transactions', unitsSortDir = 'desc';
-  let selectedUnitProduct = null, unitsMetric = 'avg_units_per_tx';
-
-  function getFiltered() {
-    const cat  = catSel.value;
-    const df   = fromEl.value || minDate;
-    const dt   = toEl.value   || maxDate;
-    const srch = searchEl.value.toLowerCase();
-    const weeks = new Set(isoWeeks(STATE.unitsData, df, dt).map(d => d.week));
-    return STATE.unitsData.filter(d =>
-      weeks.has(d.week) &&
-      (!cat  || d.category === cat) &&
-      (!srch || (d.product_name||'').toLowerCase().includes(srch))
-    );
-  }
-
-  function renderTable() {
-    const filtered = getFiltered();
-    const prodMap = {};
-    filtered.forEach(r => {
-      const k = r.product_name; if (!k) return;
-      if (!prodMap[k]) prodMap[k] = { product_name:k, category:r.category, transactions:0, total_units:0, _avgSum:0, _avgN:0, _4plusSum:0 };
-      const e = prodMap[k];
-      e.transactions += r.transactions||0;
-      e.total_units  += r.total_units||0;
-      if (r.avg_units_per_tx != null) { e._avgSum += r.avg_units_per_tx * (r.transactions||1); e._avgN += r.transactions||1; }
-      e._4plusSum += (r.pct_tx_4plus_units||0) * (r.transactions||1);
+  function renderTable(){
+    const cat=catSel.value,df=fromEl.value||minD,dt=toEl.value||maxD,srch=searchEl.value.toLowerCase();
+    const weeks=new Set(isoWeeks(S.unitsData,df,dt).map(d=>d.week));
+    const filtered=S.unitsData.filter(d=>weeks.has(d.week)&&(!cat||d.category===cat)&&(!srch||(d.product_name||'').toLowerCase().includes(srch)));
+    const pm={};
+    filtered.forEach(r=>{
+      const k=r.product_name;if(!k)return;
+      if(!pm[k])pm[k]={product_name:k,category:r.category,transactions:0,total_units:0,_as:0,_an:0,_4s:0};
+      const e=pm[k];e.transactions+=r.transactions||0;e.total_units+=r.total_units||0;
+      if(r.avg_units_per_tx!=null){e._as+=r.avg_units_per_tx*(r.transactions||1);e._an+=r.transactions||1;}
+      e._4s+=(r.pct_tx_4plus_units||0)*(r.transactions||1);
     });
-    const rows = Object.values(prodMap).map(r => ({
-      ...r,
-      avg_units_per_tx: r._avgN ? +(r._avgSum/r._avgN).toFixed(2) : 0,
-      pct_tx_4plus_units: r.transactions ? +(r._4plusSum/r.transactions).toFixed(1) : 0,
-    })).sort((a,b) => {
-      const av=a[unitsSortCol]||0, bv=b[unitsSortCol]||0;
-      return unitsSortDir==='desc' ? bv-av : av-bv;
-    }).slice(0,200);
-
-    document.getElementById('units-count').textContent = `${rows.length} products`;
-    document.getElementById('units-table-body').innerHTML = rows.map(r => `
-      <tr style="cursor:pointer" data-product="${(r.product_name||'').replace(/"/g,'&quot;')}">
-        <td class="name">${r.product_name||'(unknown)'}</td>
-        <td class="cat-tag">${r.category||''}</td>
-        <td class="num">${fmt.num(r.transactions)}</td>
-        <td class="num">${fmt.num(r.total_units)}</td>
-        <td class="num">${r.avg_units_per_tx.toFixed(2)}</td>
-        <td class="num">${r.pct_tx_4plus_units.toFixed(1)}%</td>
-      </tr>
-    `).join('');
-
-    document.getElementById('units-table-body').querySelectorAll('tr').forEach(row => {
-      row.addEventListener('click', () => {
-        selectedUnitProduct = row.dataset.product;
-        document.getElementById('units-table-body').querySelectorAll('tr').forEach(r => r.style.background='');
-        row.style.background = '#E8D5A8';
-        renderUnitChart();
+    const rows=Object.values(pm).map(r=>({...r,avg_units_per_tx:r._an?+(r._as/r._an).toFixed(2):0,pct_tx_4plus_units:r.transactions?+(r._4s/r.transactions).toFixed(1):0})).sort((a,b)=>{const av=a[S.unitsSortCol]||0,bv=b[S.unitsSortCol]||0;return S.unitsSortDir==='desc'?bv-av:av-bv;}).slice(0,200);
+    document.getElementById('units-count').textContent=`${rows.length} products`;
+    document.getElementById('units-tbody').innerHTML=rows.map(r=>`<tr style="cursor:pointer" data-prod="${(r.product_name||'').replace(/"/g,'&quot;')}"><td class="name">${r.product_name||''}</td><td class="tag">${r.category||''}</td><td class="num">${fmt.n(r.transactions)}</td><td class="num">${fmt.n(r.total_units)}</td><td class="num">${r.avg_units_per_tx.toFixed(2)}</td><td class="num">${r.pct_tx_4plus_units.toFixed(1)}%</td></tr>`).join('');
+    document.getElementById('units-tbody').querySelectorAll('tr').forEach(row=>{
+      row.addEventListener('click',()=>{
+        document.getElementById('units-tbody').querySelectorAll('tr').forEach(r=>r.style.background='');
+        row.style.background='#E8D5A8'; selProd=row.dataset.prod; renderUnitChart();
       });
     });
   }
 
-  function renderUnitChart() {
-    if (!selectedUnitProduct) return;
-    const df = fromEl.value || minDate;
-    const dt = toEl.value   || maxDate;
-    const rows = isoWeeks(STATE.unitsData.filter(d => d.product_name === selectedUnitProduct), df, dt);
-    const weeks = uniqueSortedWeeks(rows);
-    const wm = {}; rows.forEach(r => { wm[r.week] = r; });
-    const anns = changeAnnotations(STATE.meta.delivery_changes, weeks);
-    const yLabel = unitsMetric.includes('pct') ? '%' : '';
-    document.getElementById('units-chart-card').style.display = '';
-    document.getElementById('units-chart-title').textContent = `${selectedUnitProduct} — ${unitsMetric.replace(/_/g,' ')}`;
-    buildLineChart('units-trend-chart', weeks,
-      [{ label: unitsMetric.replace(/_/g,' '), data: weeks.map(w => wm[w] ? wm[w][unitsMetric]||0 : null),
-         borderColor:'#1A2A49', backgroundColor:'rgba(26,42,73,0.07)', fill:true, tension:0.3, pointRadius:3, spanGaps:true }],
-      anns, yLabel);
+  function renderUnitChart(){
+    if(!selProd)return;
+    const df=fromEl.value||minD,dt=toEl.value||maxD;
+    const rows=isoWeeks(S.unitsData.filter(d=>d.product_name===selProd),df,dt);
+    const weeks=uniqueSortedWeeks(rows);
+    const wm={};rows.forEach(r=>{wm[r.week]=r;});
+    const anns=changeAnnotations(weeks);
+    const metric=S.unitsMetric;
+    document.getElementById('units-chart-card').style.display='';
+    document.getElementById('units-chart-title').textContent=`${selProd} — ${metric.replace(/_/g,' ')}`;
+    buildLineChart('units-trend',weeks,[{label:metric.replace(/_/g,' '),data:weeks.map(w=>wm[w]?wm[w][metric]||0:null),borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:3,spanGaps:true}],anns,metric.includes('pct')?'%':'');
   }
 
-  document.getElementById('units-metric-tabs').querySelectorAll('.metric-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('units-metric-tabs').querySelectorAll('.metric-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      unitsMetric = btn.dataset.metric;
-      renderUnitChart();
+  document.getElementById('units-metric-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('units-metric-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');S.unitsMetric=btn.dataset.metric;renderUnitChart();
     });
   });
-
-  document.getElementById('units-table').querySelectorAll('th[data-col]').forEach(th => {
-    th.addEventListener('click', () => {
-      const col = th.dataset.col;
-      unitsSortDir = (unitsSortCol === col && unitsSortDir === 'desc') ? 'asc' : 'desc';
-      unitsSortCol = col;
-      document.getElementById('units-table').querySelectorAll('th').forEach(h => h.classList.remove('sort-asc','sort-desc'));
-      th.classList.add(unitsSortDir === 'desc' ? 'sort-desc' : 'sort-asc');
-      renderTable();
-    });
-  });
-
-  catSel.addEventListener('change', renderTable);
-  fromEl.addEventListener('change', renderTable);
-  toEl.addEventListener('change', renderTable);
-  let t; searchEl.addEventListener('input', () => { clearTimeout(t); t = setTimeout(renderTable, 250); });
-  document.getElementById('units-reset').addEventListener('click', () => { catSel.value=''; searchEl.value=''; fromEl.value=minDate; toEl.value=maxDate; renderTable(); });
+  makeSortableTable('units-table','unitsSortCol','unitsSortDir',renderTable);
+  catSel.addEventListener('change',renderTable);fromEl.addEventListener('change',renderTable);toEl.addEventListener('change',renderTable);
+  let t;searchEl.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(renderTable,250);});
+  document.getElementById('units-reset').addEventListener('click',()=>{catSel.value='';searchEl.value='';fromEl.value=minD;toEl.value=maxD;renderTable();});
   renderTable();
-}
-
-// ═══════════════════════════════════════════════════════
-//  CHANGE IMPACT
-// ═══════════════════════════════════════════════════════
-function initImpact() {
-  if (!STATE.impactData || !STATE.impactData.length) {
-    document.getElementById('panel-impact').innerHTML = '<div class="loading-state" style="padding:60px"><div>No change impact data yet. Run fetch_data.py to generate.</div></div>';
-    return;
-  }
-
-  const changes = [...new Set(STATE.impactData.map(d => d.change_label))].sort();
-  const cats    = [...new Set(STATE.impactData.map(d => d.category).filter(Boolean))].sort();
-
-  const changeSel = document.getElementById('impact-change-select');
-  const catSel    = document.getElementById('impact-cat-select');
-  const sortSel   = document.getElementById('impact-sort-select');
-
-  changes.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; changeSel.appendChild(o); });
-  cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; catSel.appendChild(o); });
-
-  function deltaCell(v) {
-    if (v == null) return '<td class="num">—</td>';
-    const cls = v > 0 ? 'delta-pos' : v < 0 ? 'delta-neg' : '';
-    const sign = v > 0 ? '+' : '';
-    return `<td class="num ${cls}">${sign}${v}%</td>`;
-  }
-
-  function render() {
-    const ch   = changeSel.value;
-    const cat  = catSel.value;
-    const sort = sortSel.value;
-    const rows = STATE.impactData
-      .filter(d => (!ch || d.change_label === ch) && (!cat || d.category === cat))
-      .sort((a,b) => {
-        const av = Math.abs(a[sort]||0), bv = Math.abs(b[sort]||0);
-        return bv - av;
-      });
-
-    document.getElementById('impact-table-body').innerHTML = rows.map(r => `
-      <tr>
-        <td style="font-size:11px;color:var(--muted);white-space:nowrap">${r.change_label}</td>
-        <td class="name">${r.category||''}</td>
-        <td class="num">${fmt.currency(r.avg_rev_before)}</td>
-        <td class="num">${fmt.currency(r.avg_rev_after)}</td>
-        ${deltaCell(r.rev_pct_change)}
-        <td class="num">${fmt.num(Math.round(r.avg_tx_before))}</td>
-        <td class="num">${fmt.num(Math.round(r.avg_tx_after))}</td>
-        ${deltaCell(r.tx_pct_change)}
-        <td class="num">${fmt.currency(r.avg_aov_before)}</td>
-        <td class="num">${fmt.currency(r.avg_aov_after)}</td>
-        ${deltaCell(r.aov_pct_change)}
-      </tr>
-    `).join('');
-
-    // Bar chart — rev % change by category for selected change (or most recent)
-    const chartChange = ch || changes[changes.length - 1];
-    const chartRows = STATE.impactData
-      .filter(d => d.change_label === chartChange && d.rev_pct_change != null)
-      .sort((a,b) => (b.rev_pct_change||0) - (a.rev_pct_change||0));
-
-    const ctx = document.getElementById('impact-bar-chart');
-    if (STATE.charts['impact-bar-chart']) STATE.charts['impact-bar-chart'].destroy();
-    STATE.charts['impact-bar-chart'] = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: chartRows.map(r => r.category),
-        datasets: [{
-          label: 'Revenue % change',
-          data: chartRows.map(r => r.rev_pct_change),
-          backgroundColor: chartRows.map(r => (r.rev_pct_change||0) >= 0 ? 'rgba(45,138,95,0.75)' : 'rgba(192,57,43,0.75)'),
-        }]
-      },
-      options: {
-        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x > 0 ? '+' : ''}${ctx.parsed.x}%` } } },
-        scales: {
-          x: { ticks: { callback: v => v+'%', font:{size:10} }, grid:{color:'#F0EDE8'} },
-          y: { ticks: { font:{size:11} }, grid:{display:false} }
-        }
-      }
-    });
-  }
-
-  changeSel.addEventListener('change', render);
-  catSel.addEventListener('change', render);
-  sortSel.addEventListener('change', render);
-  render();
 }
 
 // ═══════════════════════════════════════════════════════
 //  DELIVERY STRUCTURE
 // ═══════════════════════════════════════════════════════
-function initDelivery() {
-  const current = STATE.meta.current_delivery || [];
-  const changes = STATE.meta.delivery_changes || [];
+function initDelivery(){
+  const current=S.meta.current_delivery||[];
+  const cc={'B&S':'#1A2A49','DPD':'#E67E22','DX 2-crew':'#8E44AD','N/A':'#7A8BA0'};
+  document.getElementById('delivery-cards').innerHTML=current.map(t=>`
+    <div class="delivery-card" style="border-top:3px solid ${cc[t.carrier]||'#ccc'}">
+      <div class="dc-header"><span class="dc-tier">${t.tier}</span><span class="dc-price">£${t.price}</span></div>
+      <div class="dc-carrier" style="color:${cc[t.carrier]||'#999'}">${t.carrier}</div>
+      <div class="dc-examples">${t.examples}</div>
+    </div>`).join('');
+  document.getElementById('delivery-timeline').innerHTML=(S.meta.delivery_changes||[]).map((ch,i)=>`
+    <div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
+      <div style="width:3px;min-width:3px;border-radius:2px;background:${CHANGE_COLORS[i%CHANGE_COLORS.length]};align-self:stretch"></div>
+      <div><strong style="font-size:13px;color:var(--navy)">${ch.date} — ${ch.label}</strong><div style="font-size:12px;color:var(--muted);margin-top:3px">${ch.detail}</div></div>
+    </div>`).join('');
+}
 
-  // Current structure cards
-  const carrierColors = { 'B&S':'#1A2A49', 'DPD':'#E67E22', 'DX 2-crew':'#8E44AD', 'N/A':'#7A8BA0' };
-  document.getElementById('delivery-structure-cards').innerHTML = current.map(tier => `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;border-top:3px solid ${carrierColors[tier.carrier]||'#ccc'}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <strong style="font-size:14px;color:var(--navy)">${tier.tier}</strong>
-        <span style="font-size:22px;font-weight:800;color:var(--navy)">£${tier.price}</span>
-      </div>
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:${carrierColors[tier.carrier]||'#999'};margin-bottom:6px">${tier.carrier}</div>
-      <div style="font-size:12px;color:var(--muted)">${tier.examples}</div>
-    </div>
-  `).join('');
+// ═══════════════════════════════════════════════════════
+//  AI PANEL
+// ═══════════════════════════════════════════════════════
+function initAI(){
+  const fab=document.getElementById('ai-fab');
+  const panel=document.getElementById('ai-panel');
+  const closeBtn=document.getElementById('ai-close');
+  const input=document.getElementById('ai-input');
+  const sendBtn=document.getElementById('ai-send');
+  const messages=document.getElementById('ai-messages');
 
-  // Timeline
-  document.getElementById('delivery-timeline').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:0">
-      ${changes.map((ch, i) => `
-        <div style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border)">
-          <div style="width:3px;min-width:3px;border-radius:2px;background:${CHANGE_COLORS[i%CHANGE_COLORS.length]};align-self:stretch"></div>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">${ch.date} — ${ch.label}</div>
-            <div style="font-size:12px;color:var(--muted)">${ch.detail}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `;
+  fab.addEventListener('click',()=>{panel.classList.add('open');fab.style.display='none';input.focus();});
+  closeBtn.addEventListener('click',()=>{panel.classList.remove('open');fab.style.display='flex';});
+
+  // Suggestion chips
+  document.getElementById('ai-suggestions').querySelectorAll('.ai-sug').forEach(btn=>{
+    btn.addEventListener('click',()=>{input.value=btn.textContent;sendMessage();});
+  });
+
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}});
+  sendBtn.addEventListener('click',sendMessage);
+
+  function buildContext(){
+    const summary={
+      dateRange: uniqueSortedWeeks(S.categoryData).join(' to ').replace(/(.+),(.+)/,'$1 to$2'),
+      deliveryChanges: S.meta.delivery_changes,
+      changeImpact: S.impactData||[],
+      changeImpactSubcat: (S.impactSubcat||[]).filter(d=>d.change_label.includes('2026')||d.change_label.includes('Aug 2025')),
+      funnelSummary: (() => {
+        const fn=S.funnelData;
+        const totBC=fn.reduce((s,r)=>s+(r.begin_checkout||0),0);
+        const totP=fn.reduce((s,r)=>s+(r.purchase||0),0);
+        const totSh=fn.reduce((s,r)=>s+(r.add_shipping_info||0),0);
+        return{totalBeginCheckout:totBC,totalPurchases:totP,checkoutToBuyRate:totBC?+(totP/totBC*100).toFixed(2):0,shipToPurchaseRate:totSh?+(totP/totSh*100).toFixed(2):0};
+      })(),
+    };
+    return JSON.stringify(summary);
+  }
+
+  async function sendMessage(){
+    const text=input.value.trim();if(!text)return;
+    input.value='';
+    addMsg('user',text);
+    const thinking=addMsg('assistant','Thinking…',true);
+    S.aiHistory.push({role:'user',content:text});
+
+    try{
+      const ctx=buildContext();
+      const systemPrompt=`You are a data analyst for Barker & Stonehouse, a premium UK furniture retailer. You have access to GA4 ecommerce data showing how delivery cost changes affected sales performance.
+
+Here is the data context:
+${ctx}
+
+Answer questions directly and concisely. Use actual numbers from the data. Format currency as £. When discussing changes, compare the before and after figures. Be specific about which categories or products were affected. If something isn't in the data, say so.`;
+
+      const apiKey = localStorage.getItem('anthropic_api_key');
+      if(!apiKey){ thinking.remove(); addMsg('assistant','No API key found. Open the browser console and run: localStorage.setItem(\'anthropic_api_key\', \'your-key-here\')'); return; }
+      const resp=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({
+          model:'claude-sonnet-4-6',
+          max_tokens:1000,
+          system:systemPrompt,
+          messages:S.aiHistory,
+        })
+      });
+      const data=await resp.json();
+      const reply=(data.content||[]).find(b=>b.type==='text')?.text||'Sorry, I couldn\'t get a response.';
+      thinking.remove();
+      addMsg('assistant',reply);
+      S.aiHistory.push({role:'assistant',content:reply});
+    }catch(err){
+      thinking.remove();
+      addMsg('assistant','Error connecting to AI. Check your API key is set in localStorage (key: anthropic_api_key).');
+    }
+  }
+
+  function addMsg(role,text,isThinking=false){
+    const div=document.createElement('div');
+    div.className=`ai-msg ${role}${isThinking?' thinking':''}`;
+    div.textContent=text;
+    messages.appendChild(div);
+    messages.scrollTop=messages.scrollHeight;
+    return div;
+  }
 }
 
 // ─── Boot

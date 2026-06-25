@@ -1009,7 +1009,7 @@ async function initDashboard() {
     const allDataWeeks = [...new Set([...STATE.categoryData, ...STATE.funnelData].map(d => d.week))].sort();
     const minDataWeek = allDataWeeks[0];
     const relevantChanges = meta.delivery_changes.filter(ch => ch.date >= minDataWeek);
-    buildChangeLegend(relevantChanges);
+    buildChangeLegend(relevantChanges, true);
     initNavTabs();
     initOverview();
     initCategory();
@@ -1080,6 +1080,7 @@ function changeAnnotations(changes, weeks) {
   const anns = {};
   const minWeek = weeks[0];
   const maxWeek = weeks[weeks.length - 1];
+  let annIdx = 0;
   changes.forEach((ch, i) => {
     // Skip changes that fall before the data range
     if (ch.date < minWeek) return;
@@ -1088,22 +1089,23 @@ function changeAnnotations(changes, weeks) {
     if (!targetWeek) return;
     const xVal = weeks.indexOf(targetWeek);
     const yOffsets = [-8, 32, 72, 110];
+    const ci = annIdx++;
     anns[`line${i}`] = {
       type: 'line',
       xMin: xVal, xMax: xVal,
-      borderColor: CHANGE_COLORS[i % CHANGE_COLORS.length],
+      borderColor: CHANGE_COLORS[ci % CHANGE_COLORS.length],
       borderWidth: 2,
       borderDash: [6, 4],
       label: {
         display: true,
         content: ch.label,
         position: 'start',
-        backgroundColor: CHANGE_COLORS[i % CHANGE_COLORS.length],
+        backgroundColor: CHANGE_COLORS[ci % CHANGE_COLORS.length],
         color: '#fff',
         font: { size: 10, weight: '700' },
         padding: { x: 7, y: 4 },
         borderRadius: 3,
-        yAdjust: yOffsets[i % yOffsets.length],
+        yAdjust: yOffsets[ci % yOffsets.length],
       }
     };
   });
@@ -1181,7 +1183,7 @@ function buildBarChart(canvasId, labels, dataset, yLabel = '') {
 //  CHANGE LEGEND
 // ═══════════════════════════════════════════════════════
 
-function buildChangeLegend(changes) {
+function buildChangeLegend(changes, sequential = false) {
   const container = document.getElementById('changeLegendItems');
   container.innerHTML = changes.map((ch, i) => `
     <div class="change-legend-item">

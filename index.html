@@ -496,6 +496,13 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
         <button class="btn-sm" id="cf-reset">Reset</button>
       </div>
 
+      <!-- Aggregate funnel snapshot for current filter -->
+      <div class="chart-card" style="margin-bottom:20px">
+        <h3 id="cf-agg-title">Funnel snapshot — all categories</h3>
+        <div class="chart-sub">Aggregated totals for current filter &amp; date range</div>
+        <div id="cf-agg-viz" style="margin-top:16px;overflow-x:auto"></div>
+      </div>
+
       <!-- Funnel snapshot for selected item -->
       <div id="cf-funnel-card" class="chart-card" style="display:none;margin-bottom:20px">
         <h3 id="cf-funnel-title">Funnel snapshot</h3>
@@ -1895,6 +1902,16 @@ function initCatFunnel(){
         <td class="num">${r.checkout_to_purchase_rate.toFixed(2)}%</td>
         <td class="num">${r.overall_cvr.toFixed(3)}%</td>
       </tr>`).join('');
+
+    // Render aggregate funnel snapshot for current filter
+    const aggAll = aggregateFunnel(filtered, r=>getGroupKey(r));
+    const totAgg = aggAll.reduce((acc,r)=>({
+      views:acc.views+(r.views||0), add_to_cart:acc.add_to_cart+(r.add_to_cart||0),
+      begin_checkout:acc.begin_checkout+(r.begin_checkout||0), purchases:acc.purchases+(r.purchases||0)
+    }), {views:0,add_to_cart:0,begin_checkout:0,purchases:0});
+    const lvlLabel = level==='category'?catSel.value||'all categories':level==='subcategory'?(subcatSel.value||catSel.value||'all subcategories'):(searchEl.value||catSel.value||'all products');
+    document.getElementById('cf-agg-title').textContent = `Funnel snapshot — ${lvlLabel}`;
+    document.getElementById('cf-agg-viz').innerHTML = renderFunnelSnapshotForRow(totAgg);
 
     document.getElementById('cf-tbody').querySelectorAll('tr').forEach(row=>{
       row.addEventListener('click',()=>{

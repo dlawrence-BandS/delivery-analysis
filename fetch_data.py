@@ -390,10 +390,13 @@ weekly_agg AS (
   GROUP BY 1,2
 ),
 change_dates AS (
-  SELECT change_date, change_label FROM UNNEST([
-    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
-    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
-    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  SELECT change_date, change_label, affected_categories FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label,
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'] AS affected_categories),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase',
+      ['DINING AND LIVING','ACCESSORIES','GARDEN','OFFICE','RUGS','SUNDRIES']),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase',
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'])
   ])
 ),
 before_after AS (
@@ -414,6 +417,7 @@ before_after AS (
              THEN wa.aov END) AS avg_aov_after
   FROM change_dates cd
   CROSS JOIN weekly_agg wa
+  WHERE wa.category IN UNNEST(cd.affected_categories)
   GROUP BY 1,2
 )
 SELECT
@@ -456,10 +460,13 @@ weekly_agg AS (
   GROUP BY 1,2,3
 ),
 change_dates AS (
-  SELECT change_date, change_label FROM UNNEST([
-    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
-    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
-    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  SELECT change_date, change_label, affected_categories FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label,
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'] AS affected_categories),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase',
+      ['DINING AND LIVING','ACCESSORIES','GARDEN','OFFICE','RUGS','SUNDRIES']),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase',
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'])
   ])
 ),
 before_after AS (
@@ -472,6 +479,7 @@ before_after AS (
     AVG(CASE WHEN wa.week < cd.change_date AND wa.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_before,
     AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.transactions END) AS avg_tx_after
   FROM change_dates cd CROSS JOIN weekly_agg wa
+  WHERE wa.category IN UNNEST(cd.affected_categories)
   GROUP BY 1,2,3
 )
 SELECT
@@ -516,10 +524,14 @@ top_products AS (
   GROUP BY product_name ORDER BY SUM(revenue) DESC LIMIT 300
 ),
 change_dates AS (
-  SELECT change_date, change_label FROM UNNEST([
-    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
-    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
-    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  -- Each change mapped to the categories it actually affects via delivery tier
+  SELECT change_date, change_label, affected_categories FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label,
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'] AS affected_categories),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase',
+      ['DINING AND LIVING','ACCESSORIES','GARDEN','OFFICE','RUGS','SUNDRIES']),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase',
+      ['DINING AND LIVING','BEDROOM','UPHOLSTERY','BEDS','GARDEN','OFFICE','RUGS','ACCESSORIES','BEDS AND BEDROOM'])
   ])
 ),
 before_after AS (
@@ -533,6 +545,7 @@ before_after AS (
     AVG(CASE WHEN wa.week >= cd.change_date AND wa.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY) THEN wa.avg_units END) AS avg_units_after
   FROM change_dates cd CROSS JOIN weekly_agg wa
   JOIN top_products tp USING (product_name)
+  WHERE wa.category IN UNNEST(cd.affected_categories)
   GROUP BY 1,2,3,4
 )
 SELECT
@@ -548,6 +561,137 @@ SELECT
 FROM before_after
 WHERE avg_rev_before IS NOT NULL AND avg_rev_after IS NOT NULL
 ORDER BY change_label, category, avg_rev_after DESC
+"""
+
+
+CATEGORY_FUNNEL_QUERY = f"""
+-- Category-level funnel: view_item -> add_to_cart -> begin_checkout -> purchase
+-- All derived from item events so category is available at each step
+WITH item_events AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_category  AS category,
+    item.item_category2 AS subcategory,
+    item.item_name      AS product_name,
+    event_name,
+    ecommerce.transaction_id AS transaction_id,
+    user_pseudo_id
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name IN ('view_item','add_to_cart','begin_checkout','purchase')
+    AND item.item_category IS NOT NULL AND item.item_category != ''
+),
+-- Category level
+cat_views AS (
+  SELECT week, category, COUNT(DISTINCT user_pseudo_id) AS views
+  FROM item_events WHERE event_name = 'view_item' GROUP BY 1,2
+),
+cat_atc AS (
+  SELECT week, category, COUNT(DISTINCT user_pseudo_id) AS add_to_cart
+  FROM item_events WHERE event_name = 'add_to_cart' GROUP BY 1,2
+),
+cat_checkout AS (
+  SELECT week, category, COUNT(DISTINCT user_pseudo_id) AS begin_checkout
+  FROM item_events WHERE event_name = 'begin_checkout' GROUP BY 1,2
+),
+cat_purchase AS (
+  SELECT week, category, COUNT(DISTINCT transaction_id) AS purchases
+  FROM item_events WHERE event_name = 'purchase' GROUP BY 1,2
+)
+SELECT
+  v.week, v.category,
+  v.views,
+  COALESCE(a.add_to_cart, 0)    AS add_to_cart,
+  COALESCE(c.begin_checkout, 0) AS begin_checkout,
+  COALESCE(p.purchases, 0)      AS purchases,
+  ROUND(SAFE_DIVIDE(COALESCE(a.add_to_cart,0), v.views) * 100, 2)        AS view_to_atc_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(c.begin_checkout,0), COALESCE(a.add_to_cart,0)) * 100, 2) AS atc_to_checkout_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), COALESCE(c.begin_checkout,0)) * 100, 2)   AS checkout_to_purchase_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), v.views) * 100, 3)           AS overall_cvr
+FROM cat_views v
+LEFT JOIN cat_atc      a USING (week, category)
+LEFT JOIN cat_checkout c USING (week, category)
+LEFT JOIN cat_purchase p USING (week, category)
+ORDER BY v.week, v.category
+"""
+
+SUBCATEGORY_FUNNEL_QUERY = f"""
+WITH item_events AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_category  AS category,
+    item.item_category2 AS subcategory,
+    event_name,
+    ecommerce.transaction_id AS transaction_id,
+    user_pseudo_id
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name IN ('view_item','add_to_cart','begin_checkout','purchase')
+    AND item.item_category2 IS NOT NULL AND item.item_category2 != ''
+),
+sub_views    AS (SELECT week, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS views         FROM item_events WHERE event_name='view_item'     GROUP BY 1,2,3),
+sub_atc      AS (SELECT week, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS add_to_cart   FROM item_events WHERE event_name='add_to_cart'    GROUP BY 1,2,3),
+sub_checkout AS (SELECT week, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS begin_checkout FROM item_events WHERE event_name='begin_checkout' GROUP BY 1,2,3),
+sub_purchase AS (SELECT week, category, subcategory, COUNT(DISTINCT transaction_id) AS purchases      FROM item_events WHERE event_name='purchase'       GROUP BY 1,2,3)
+SELECT
+  v.week, v.category, v.subcategory,
+  v.views,
+  COALESCE(a.add_to_cart,0)    AS add_to_cart,
+  COALESCE(c.begin_checkout,0) AS begin_checkout,
+  COALESCE(p.purchases,0)      AS purchases,
+  ROUND(SAFE_DIVIDE(COALESCE(a.add_to_cart,0), v.views)*100, 2)                                    AS view_to_atc_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(c.begin_checkout,0), COALESCE(a.add_to_cart,0))*100, 2)               AS atc_to_checkout_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), COALESCE(c.begin_checkout,0))*100, 2)                 AS checkout_to_purchase_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), v.views)*100, 3)                                       AS overall_cvr
+FROM sub_views v
+LEFT JOIN sub_atc      a USING (week, category, subcategory)
+LEFT JOIN sub_checkout c USING (week, category, subcategory)
+LEFT JOIN sub_purchase p USING (week, category, subcategory)
+ORDER BY v.week, v.category, v.subcategory
+"""
+
+PRODUCT_FUNNEL_QUERY = f"""
+WITH item_events AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_name      AS product_name,
+    item.item_category  AS category,
+    item.item_category2 AS subcategory,
+    event_name,
+    ecommerce.transaction_id AS transaction_id,
+    user_pseudo_id
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name IN ('view_item','add_to_cart','begin_checkout','purchase')
+    AND item.item_name IS NOT NULL
+),
+top_products AS (
+  SELECT product_name FROM item_events WHERE event_name='purchase'
+  GROUP BY product_name ORDER BY COUNT(DISTINCT transaction_id) DESC LIMIT 300
+),
+prod_views    AS (SELECT week, product_name, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS views         FROM item_events WHERE event_name='view_item'     GROUP BY 1,2,3,4),
+prod_atc      AS (SELECT week, product_name, COUNT(DISTINCT user_pseudo_id) AS add_to_cart   FROM item_events WHERE event_name='add_to_cart'    GROUP BY 1,2),
+prod_checkout AS (SELECT week, product_name, COUNT(DISTINCT user_pseudo_id) AS begin_checkout FROM item_events WHERE event_name='begin_checkout' GROUP BY 1,2),
+prod_purchase AS (SELECT week, product_name, COUNT(DISTINCT transaction_id) AS purchases      FROM item_events WHERE event_name='purchase'       GROUP BY 1,2)
+SELECT
+  v.week, v.product_name, v.category, v.subcategory,
+  v.views,
+  COALESCE(a.add_to_cart,0)    AS add_to_cart,
+  COALESCE(c.begin_checkout,0) AS begin_checkout,
+  COALESCE(p.purchases,0)      AS purchases,
+  ROUND(SAFE_DIVIDE(COALESCE(a.add_to_cart,0), v.views)*100, 2)                                    AS view_to_atc_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(c.begin_checkout,0), COALESCE(a.add_to_cart,0))*100, 2)               AS atc_to_checkout_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), COALESCE(c.begin_checkout,0))*100, 2)                 AS checkout_to_purchase_rate,
+  ROUND(SAFE_DIVIDE(COALESCE(p.purchases,0), v.views)*100, 3)                                       AS overall_cvr
+FROM prod_views v
+JOIN top_products tp USING (product_name)
+LEFT JOIN prod_atc      a USING (week, product_name)
+LEFT JOIN prod_checkout c USING (week, product_name)
+LEFT JOIN prod_purchase p USING (week, product_name)
+ORDER BY v.week, v.product_name
 """
 
 # ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -628,6 +772,18 @@ def main():
     print("\nFetching change impact by product...")
     impact_product = run_query(client, CHANGE_IMPACT_PRODUCT_QUERY, "change impact product")
     write_json(OUTPUT_DIR / "change_impact_product.json", impact_product)
+
+    print("\nFetching category funnel...")
+    cat_funnel = run_query(client, CATEGORY_FUNNEL_QUERY, "category funnel weekly")
+    write_json(OUTPUT_DIR / "category_funnel.json", cat_funnel)
+
+    print("\nFetching subcategory funnel...")
+    subcat_funnel = run_query(client, SUBCATEGORY_FUNNEL_QUERY, "subcategory funnel weekly")
+    write_json(OUTPUT_DIR / "subcategory_funnel.json", subcat_funnel)
+
+    print("\nFetching product funnel...")
+    product_funnel = run_query(client, PRODUCT_FUNNEL_QUERY, "product funnel weekly")
+    write_json(OUTPUT_DIR / "product_funnel.json", product_funnel)
 
     print("\nWriting meta...")
     meta = {

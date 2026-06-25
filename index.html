@@ -229,6 +229,7 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
       <button class="nav-btn" data-panel="subcategory">By Subcategory</button>
       <button class="nav-btn" data-panel="product">By Product</button>
       <button class="nav-btn" data-panel="funnel">Checkout Funnel</button>
+      <button class="nav-btn" data-panel="catfunnel">Funnel by Category</button>
       <button class="nav-btn" data-panel="aov">AOV</button>
       <button class="nav-btn" data-panel="units">Units per Transaction</button>
       <button class="nav-btn" data-panel="delivery">Delivery Structure</button>
@@ -476,7 +477,62 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
       <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:600px"><table class="data-table" id="units-table"><thead><tr><th data-col="product_name">Product</th><th data-col="category">Category</th><th data-col="transactions" class="num">Transactions</th><th data-col="total_units" class="num">Total units</th><th data-col="avg_units_per_tx" class="num">Avg units/tx</th><th data-col="pct_tx_4plus_units" class="num">% tx with 4+</th></tr></thead><tbody id="units-tbody"></tbody></table></div></div>
     </div>
 
+    <!-- ══════════════════════ FUNNEL BY CATEGORY ══════════════════════ -->
+    <div class="tab-panel" id="panel-catfunnel">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="cf-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>View</label>
+          <select id="cf-level-sel">
+            <option value="category">By Category</option>
+            <option value="subcategory">By Subcategory</option>
+            <option value="product">By Product</option>
+          </select>
+        </div>
+        <div class="fg"><label>Category</label><select id="cf-cat-sel"><option value="">All categories</option></select></div>
+        <div class="fg"><label>Subcategory</label><select id="cf-subcat-sel"><option value="">All subcategories</option></select></div>
+        <div class="fg"><label>Search</label><input type="text" id="cf-search" placeholder="Search…" style="min-width:180px"></div>
+        <div class="fg"><label>Date from</label><input type="date" id="cf-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="cf-to"></div>
+        <button class="btn-sm" id="cf-reset">Reset</button>
+      </div>
+
+      <!-- Funnel snapshot for selected item -->
+      <div id="cf-funnel-card" class="chart-card" style="display:none;margin-bottom:20px">
+        <h3 id="cf-funnel-title">Funnel snapshot</h3>
+        <div class="chart-sub" id="cf-funnel-sub">Selected date range</div>
+        <div id="cf-funnel-viz" style="margin-top:16px;overflow-x:auto"></div>
+      </div>
+
+      <!-- Metric trend chart -->
+      <div class="chart-card" id="cf-trend-card" style="display:none;margin-bottom:20px">
+        <h3 id="cf-trend-title">Funnel metric — weekly</h3>
+        <div class="chart-sub">Click a row to chart · delivery changes annotated</div>
+        <div class="metric-tabs" id="cf-metric-tabs">
+          <button class="m-tab active" data-metric="view_to_atc_rate">View→ATC %</button>
+          <button class="m-tab" data-metric="atc_to_checkout_rate">ATC→Checkout %</button>
+          <button class="m-tab" data-metric="checkout_to_purchase_rate">Checkout→Purchase %</button>
+          <button class="m-tab" data-metric="overall_cvr">Overall CVR %</button>
+          <button class="m-tab" data-metric="views">Product views</button>
+          <button class="m-tab" data-metric="add_to_cart">Add to cart</button>
+          <button class="m-tab" data-metric="purchases">Purchases</button>
+        </div>
+        <div class="chart-wrap tall"><canvas id="cf-trend-chart"></canvas></div>
+      </div>
+
+      <!-- Summary table -->
+      <div class="section-hdr"><h2 id="cf-table-title">Category funnel summary</h2><span id="cf-table-sub">Click a row to see funnel snapshot and weekly trend</span></div>
+      <div class="drill-section" style="padding:0">
+        <div class="table-wrap" style="max-height:600px;overflow-y:auto">
+          <table class="data-table" id="cf-table">
+            <thead id="cf-thead"></thead>
+            <tbody id="cf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════════════════════ DELIVERY STRUCTURE ══════════════════════ -->
+        <!-- ══════════════════════ DELIVERY STRUCTURE ══════════════════════ -->
     <div class="tab-panel" id="panel-delivery">
       <div class="section-hdr"><h2>Current delivery cost structure</h2><span>Post 27 March 2026</span></div>
       <div class="delivery-grid" id="delivery-cards"></div>
@@ -644,7 +700,7 @@ async function loadJSON(p){
 
 async function initDashboard(){
   try{
-    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd]=await Promise.all([
+    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd,catFunnel,subcatFunnel,prodFunnel]=await Promise.all([
       loadJSON('data/meta.json'),
       loadJSON('data/category_weekly.json'),
       loadJSON('data/subcategory_weekly.json'),
@@ -655,10 +711,14 @@ async function initDashboard(){
       loadJSON('data/change_impact.json').catch(()=>[]),
       loadJSON('data/change_impact_subcat.json').catch(()=>[]),
       loadJSON('data/change_impact_product.json').catch(()=>[]),
+      loadJSON('data/category_funnel.json').catch(()=>[]),
+      loadJSON('data/subcategory_funnel.json').catch(()=>[]),
+      loadJSON('data/product_funnel.json').catch(()=>[]),
     ]);
     S.meta=meta; S.categoryData=cat; S.subcategoryData=subcat; S.productData=prod;
     S.funnelData=funnel; S.aovData=aov; S.unitsData=units;
     S.impactData=impact; S.impactSubcat=impactSubcat; S.impactProduct=impactProd;
+    S.catFunnelData=catFunnel||[]; S.subcatFunnelData=subcatFunnel||[]; S.prodFunnelData=prodFunnel||[];
 
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
@@ -675,6 +735,7 @@ async function initDashboard(){
     initAOV();
     initUnits();
     initDelivery();
+    initCatFunnel();
     initAI();
 
   }catch(err){
@@ -1624,6 +1685,255 @@ function renderStoryAllProductTable(){
   });
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  FUNNEL BY CATEGORY / SUBCATEGORY / PRODUCT
+// ═══════════════════════════════════════════════════════
+function initCatFunnel(){
+  buildLegend('cf-legend');
+
+  const levelSel   = document.getElementById('cf-level-sel');
+  const catSel     = document.getElementById('cf-cat-sel');
+  const subcatSel  = document.getElementById('cf-subcat-sel');
+  const searchEl   = document.getElementById('cf-search');
+  const fromEl     = document.getElementById('cf-from');
+  const toEl       = document.getElementById('cf-to');
+
+  // Populate category dropdown from category funnel data
+  const cats = [...new Set((S.catFunnelData||[]).map(d=>d.category).filter(Boolean))].sort();
+  cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
+
+  // Date range from category funnel data
+  const allData = [...(S.catFunnelData||[]), ...(S.subcatFunnelData||[])];
+  const allWeeks = uniqueSortedWeeks(allData.length ? allData : S.categoryData);
+  const minD = allWeeks[0], maxD = allWeeks[allWeeks.length-1];
+  fromEl.value=minD; toEl.value=maxD; fromEl.min=minD; fromEl.max=maxD; toEl.min=minD; toEl.max=maxD;
+
+  let cfSortCol='purchases', cfSortDir='desc', cfMetric='view_to_atc_rate', cfSelected=null;
+
+  function getCurrentData(){
+    const level = levelSel.value;
+    if(level==='category') return S.catFunnelData||[];
+    if(level==='subcategory') return S.subcatFunnelData||[];
+    return S.prodFunnelData||[];
+  }
+
+  function getGroupKey(row){
+    const level = levelSel.value;
+    if(level==='category') return row.category;
+    if(level==='subcategory') return `${row.category}|||${row.subcategory}`;
+    return row.product_name;
+  }
+
+  function getDisplayName(row){
+    const level = levelSel.value;
+    if(level==='category') return row.category||'(not set)';
+    if(level==='subcategory') return row.subcategory||'(not set)';
+    return row.product_name||'(unknown)';
+  }
+
+  function popSubcats(cat){
+    subcatSel.innerHTML='<option value="">All subcategories</option>';
+    const subs=[...new Set((S.subcatFunnelData||[]).filter(d=>!cat||d.category===cat).map(d=>d.subcategory).filter(Boolean))].sort();
+    subs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;subcatSel.appendChild(o);});
+  }
+  popSubcats('');
+
+  catSel.addEventListener('change',()=>{popSubcats(catSel.value);render();});
+  levelSel.addEventListener('change',()=>{
+    subcatSel.style.display = levelSel.value==='subcategory'?'':'none';
+    searchEl.style.display  = levelSel.value==='product'?'':'none';
+    render();
+  });
+  subcatSel.style.display='none'; searchEl.style.display='none';
+
+  function getFilteredRows(){
+    const level=levelSel.value, cat=catSel.value, sub=subcatSel.value;
+    const df=fromEl.value||minD, dt=toEl.value||maxD;
+    const srch=searchEl.value.toLowerCase();
+    const data=getCurrentData();
+    const weeks=new Set(isoWeeks(data,df,dt).map(d=>d.week));
+    return data.filter(d=>
+      weeks.has(d.week) &&
+      (!cat  || d.category===cat) &&
+      (!sub  || d.subcategory===sub) &&
+      (!srch || (d.product_name||d.subcategory||d.category||'').toLowerCase().includes(srch))
+    );
+  }
+
+  function aggregateFunnel(rows, groupKeyFn){
+    const map={};
+    rows.forEach(r=>{
+      const k=groupKeyFn(r); if(!k) return;
+      if(!map[k])map[k]={_key:k,category:r.category,subcategory:r.subcategory,product_name:r.product_name,views:0,add_to_cart:0,begin_checkout:0,purchases:0};
+      const e=map[k];
+      e.views+=r.views||0; e.add_to_cart+=r.add_to_cart||0; e.begin_checkout+=r.begin_checkout||0; e.purchases+=r.purchases||0;
+    });
+    return Object.values(map).map(r=>({
+      ...r,
+      view_to_atc_rate:       r.views ?+(r.add_to_cart/r.views*100).toFixed(2):0,
+      atc_to_checkout_rate:   r.add_to_cart?+(r.begin_checkout/r.add_to_cart*100).toFixed(2):0,
+      checkout_to_purchase_rate: r.begin_checkout?+(r.purchases/r.begin_checkout*100).toFixed(2):0,
+      overall_cvr:            r.views?+(r.purchases/r.views*100).toFixed(3):0,
+    }));
+  }
+
+  function renderFunnelSnapshotForRow(agg){
+    const steps=[
+      {label:'Product views',  val:agg.views},
+      {label:'Add to cart',    val:agg.add_to_cart},
+      {label:'Begin checkout', val:agg.begin_checkout},
+      {label:'Purchase',       val:agg.purchases},
+    ];
+    const maxVal=Math.max(...steps.map(s=>s.val));
+    const BAR_MAX=140;
+    let html='<div class="fv-wrap">';
+    steps.forEach((s,i)=>{
+      const h=maxVal?Math.max(6,Math.round(s.val/maxVal*BAR_MAX)):6;
+      html+=`<div class="fv-step">
+        <div class="fv-label">${s.label}</div>
+        <div class="fv-count">${fmt.n(s.val)}</div>
+        <div class="fv-bar-wrap"><div class="fv-bar${i===3?' highlighted':''}" style="height:${h}px"></div></div>
+      </div>`;
+      if(i<steps.length-1){
+        const next=steps[i+1].val, curr=s.val;
+        const cr=curr?+(next/curr*100).toFixed(1):0;
+        html+=`<div class="fv-connector">
+          <div class="fv-arrow-box"><svg viewBox="0 0 24 24"><path d="M12 4l-1.4 1.4L16.2 11H4v2h12.2l-5.6 5.6L12 20l8-8z"/></svg></div>
+          <div class="fv-cr">${cr}%</div><div class="fv-cr-label">CR%</div>
+        </div>`;
+      }
+    });
+    html+='</div>';
+    // Drop row
+    html+='<div class="fv-drop-row" style="margin-top:12px">';
+    steps.forEach((s,i)=>{
+      const dropped=i<steps.length-1?s.val-steps[i+1].val:null;
+      const pct=dropped!=null&&s.val?+(dropped/s.val*100).toFixed(1):null;
+      html+=`<div class="fv-drop-step">`;
+      if(dropped!=null) html+=`<div class="fv-drop-icon"><svg viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg></div><div class="fv-drop-n">${fmt.n(dropped)}</div><div class="fv-drop-label">dropped</div><div class="fv-drop-pct">${pct}%</div>`;
+      html+=`</div>`;
+      if(i<steps.length-1) html+=`<div class="fv-connector-spacer"></div>`;
+    });
+    html+='</div>';
+    return html;
+  }
+
+  function renderTrendForKey(key){
+    const level=levelSel.value;
+    const df=fromEl.value||minD, dt=toEl.value||maxD;
+    const data=getCurrentData();
+    const rows=isoWeeks(data,df,dt).filter(r=>getGroupKey(r)===key);
+    const weeks=uniqueSortedWeeks(rows);
+    // Aggregate by week
+    const wm={};
+    rows.forEach(r=>{
+      if(!wm[r.week])wm[r.week]={views:0,add_to_cart:0,begin_checkout:0,purchases:0};
+      const e=wm[r.week];
+      e.views+=r.views||0;e.add_to_cart+=r.add_to_cart||0;e.begin_checkout+=r.begin_checkout||0;e.purchases+=r.purchases||0;
+    });
+    const vals=weeks.map(w=>{
+      const e=wm[w];if(!e)return null;
+      if(cfMetric==='view_to_atc_rate')       return e.views?+(e.add_to_cart/e.views*100).toFixed(2):0;
+      if(cfMetric==='atc_to_checkout_rate')   return e.add_to_cart?+(e.begin_checkout/e.add_to_cart*100).toFixed(2):0;
+      if(cfMetric==='checkout_to_purchase_rate') return e.begin_checkout?+(e.purchases/e.begin_checkout*100).toFixed(2):0;
+      if(cfMetric==='overall_cvr')            return e.views?+(e.purchases/e.views*100).toFixed(3):0;
+      return e[cfMetric]||0;
+    });
+    const isRate=cfMetric.includes('rate')||cfMetric==='overall_cvr';
+    const anns=changeAnnotations(weeks);
+    buildLineChart('cf-trend-chart',weeks,[{
+      label:cfMetric.replace(/_/g,' '),data:vals,
+      borderColor:'#1A2A49',backgroundColor:'rgba(26,42,73,0.07)',fill:true,tension:0.3,pointRadius:3,spanGaps:true
+    }],anns,isRate?'%':'');
+  }
+
+  function render(){
+    const level=levelSel.value;
+    const filtered=getFilteredRows();
+    const agg=aggregateFunnel(filtered,r=>getGroupKey(r))
+      .sort((a,b)=>{const av=a[cfSortCol]||0,bv=b[cfSortCol]||0;return cfSortDir==='desc'?bv-av:av-bv;})
+      .slice(0,200);
+
+    // Update thead
+    const isProduct=level==='product', isSubcat=level==='subcategory';
+    document.getElementById('cf-thead').innerHTML=`<tr>
+      ${isProduct?'<th>Category</th><th data-col="product_name">Product</th>':isSubcat?'<th>Category</th><th data-col="subcategory">Subcategory</th>':'<th data-col="category">Category</th>'}
+      <th data-col="views" class="num">Views</th>
+      <th data-col="add_to_cart" class="num">ATC</th>
+      <th data-col="begin_checkout" class="num">Checkout</th>
+      <th data-col="purchases" class="num">Purchases</th>
+      <th data-col="view_to_atc_rate" class="num">View→ATC%</th>
+      <th data-col="atc_to_checkout_rate" class="num">ATC→Checkout%</th>
+      <th data-col="checkout_to_purchase_rate" class="num">Checkout→Buy%</th>
+      <th data-col="overall_cvr" class="num">CVR%</th>
+    </tr>`;
+
+    document.getElementById('cf-thead').querySelectorAll('th[data-col]').forEach(th=>{
+      th.style.cursor='pointer';
+      th.addEventListener('click',()=>{
+        cfSortDir=(cfSortCol===th.dataset.col&&cfSortDir==='desc')?'asc':'desc';
+        cfSortCol=th.dataset.col;
+        render();
+      });
+    });
+
+    document.getElementById('cf-table-title').textContent =
+      level==='category'?'Category funnel summary':level==='subcategory'?'Subcategory funnel summary':'Product funnel summary';
+
+    document.getElementById('cf-tbody').innerHTML=agg.map(r=>`
+      <tr style="cursor:pointer" data-key="${(getGroupKey(r)||'').replace(/"/g,'&quot;')}">
+        ${isProduct?`<td class="tag">${r.category||''}</td><td class="name">${r.product_name||''}</td>`:
+          isSubcat?`<td class="tag">${r.category||''}</td><td class="name">${r.subcategory||''}</td>`:
+          `<td class="name">${r.category||''}</td>`}
+        <td class="num">${fmt.n(r.views)}</td>
+        <td class="num">${fmt.n(r.add_to_cart)}</td>
+        <td class="num">${fmt.n(r.begin_checkout)}</td>
+        <td class="num">${fmt.n(r.purchases)}</td>
+        <td class="num">${r.view_to_atc_rate.toFixed(2)}%</td>
+        <td class="num">${r.atc_to_checkout_rate.toFixed(2)}%</td>
+        <td class="num">${r.checkout_to_purchase_rate.toFixed(2)}%</td>
+        <td class="num">${r.overall_cvr.toFixed(3)}%</td>
+      </tr>`).join('');
+
+    document.getElementById('cf-tbody').querySelectorAll('tr').forEach(row=>{
+      row.addEventListener('click',()=>{
+        document.getElementById('cf-tbody').querySelectorAll('tr').forEach(r=>r.classList.remove('row-selected'));
+        row.classList.add('row-selected');
+        const key=row.dataset.key;
+        cfSelected=key;
+        const aggRow=agg.find(r=>getGroupKey(r)===key);
+        if(aggRow){
+          document.getElementById('cf-funnel-card').style.display='';
+          document.getElementById('cf-funnel-title').textContent=getDisplayName(aggRow)+' — funnel snapshot';
+          document.getElementById('cf-funnel-viz').innerHTML=renderFunnelSnapshotForRow(aggRow);
+          document.getElementById('cf-trend-card').style.display='';
+          document.getElementById('cf-trend-title').textContent=getDisplayName(aggRow)+' — weekly trend';
+          renderTrendForKey(key);
+          document.getElementById('cf-funnel-card').scrollIntoView({behavior:'smooth',block:'nearest'});
+        }
+      });
+    });
+  }
+
+  document.getElementById('cf-metric-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('cf-metric-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); cfMetric=btn.dataset.metric;
+      if(cfSelected) renderTrendForKey(cfSelected);
+    });
+  });
+
+  fromEl.addEventListener('change',render); toEl.addEventListener('change',render);
+  subcatSel.addEventListener('change',render);
+  let t; searchEl.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(render,250);});
+  document.getElementById('cf-reset').addEventListener('click',()=>{
+    catSel.value=''; subcatSel.value=''; searchEl.value='';
+    fromEl.value=minD; toEl.value=maxD; popSubcats(''); render();
+  });
+
+  render();
+}
 // ─── Boot
 initDashboard();
 initSettings();

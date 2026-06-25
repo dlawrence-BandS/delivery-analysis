@@ -1096,17 +1096,7 @@ function changeAnnotations(changes, weeks) {
       borderColor: CHANGE_COLORS[ci % CHANGE_COLORS.length],
       borderWidth: 2,
       borderDash: [6, 4],
-      label: {
-        display: true,
-        content: ch.label,
-        position: 'start',
-        backgroundColor: CHANGE_COLORS[ci % CHANGE_COLORS.length],
-        color: '#fff',
-        font: { size: 10, weight: '700' },
-        padding: { x: 7, y: 4 },
-        borderRadius: 3,
-        yAdjust: yOffsets[ci % yOffsets.length],
-      }
+      label: { display: false }
     };
   });
   return anns;

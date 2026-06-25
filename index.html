@@ -231,10 +231,16 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
               <div class="drill-sub">4-week avg before vs after · click a row to drill deeper</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <div style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:3px">
-                <button class="drill-level-btn active" data-level="category" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">Category</button>
-                <button class="drill-level-btn" data-level="subcategory" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Subcategory</button>
-                <button class="drill-level-btn" data-level="product" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Product</button>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="display:flex;gap:2px;background:var(--bg);border-radius:6px;padding:3px">
+                  <button class="drill-level-btn active" data-level="category" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">Category</button>
+                  <button class="drill-level-btn" data-level="subcategory" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Subcategory</button>
+                  <button class="drill-level-btn" data-level="product" style="background:none;color:var(--muted);border:none;border-radius:4px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer">Product</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:6px;padding:4px 8px">
+                  <label style="font-size:11px;color:var(--muted);white-space:nowrap">Min orders:</label>
+                  <input type="number" id="min-tx-filter" value="3" min="1" max="50" style="width:44px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;text-align:center">
+                </div>
               </div>
               <button class="back-btn" id="story-cat-back">✕ Close</button>
             </div>
@@ -460,10 +466,12 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
     <div class="ai-msg assistant">Hi! I have access to all your delivery impact data. Ask me anything — e.g. "Did the March 2026 price rise hurt dining chair sales?" or "Which category was most affected by the August 2025 change?"</div>
   </div>
   <div class="ai-suggestions" id="ai-suggestions">
-    <button class="ai-sug">Did March 2026 hurt dining chairs?</button>
-    <button class="ai-sug">Which category dropped most after April 2025?</button>
-    <button class="ai-sug">Did AOV change after any price rises?</button>
-    <button class="ai-sug">What happened to checkout conversion?</button>
+    <button class="ai-sug">Did March 2026 hurt dining chair sales?</button>
+    <button class="ai-sug">Did people buy fewer chairs per order after the price rise?</button>
+    <button class="ai-sug">Did people abandon checkout more after seeing higher delivery costs?</button>
+    <button class="ai-sug">Which category was hit hardest by the April 2025 change?</button>
+    <button class="ai-sug">Did AOV change after the March 2026 increase?</button>
+    <button class="ai-sug">What's the current delivery cost structure?</button>
   </div>
   <div class="ai-input-row">
     <textarea class="ai-input" id="ai-input" placeholder="Ask a question about your data…" rows="1"></textarea>
@@ -739,8 +747,9 @@ function initStory(){
 }
 
 function renderStoryCatTable(){
+  const minTx = parseInt(document.getElementById('min-tx-filter')?.value||'3');
   const rows = (S.impactData||[])
-    .filter(d=>d.change_label===S.selectedChange)
+    .filter(d=>d.change_label===S.selectedChange && (d.avg_tx_before||0)>=minTx && (d.avg_tx_after||0)>=minTx)
     .sort((a,b)=>{
       const av=Math.abs(a[S.storyCatSortCol]||0), bv=Math.abs(b[S.storyCatSortCol]||0);
       return S.storyCatSortDir==='desc'?bv-av:av-bv;
@@ -1255,18 +1264,68 @@ function initAI(){
   sendBtn.addEventListener('click',sendMessage);
 
   function buildContext(){
-    const summary={
-      dateRange: uniqueSortedWeeks(S.categoryData).join(' to ').replace(/(.+),(.+)/,'$1 to$2'),
+    // Aggregate units per tx by product across full date range
+    const unitsByProduct = {};
+    (S.unitsData||[]).forEach(r => {
+      const k = r.product_name; if(!k) return;
+      if(!unitsByProduct[k]) unitsByProduct[k] = {product_name:k, category:r.category, transactions:0, total_units:0, _as:0, _an:0, _4s:0};
+      const e = unitsByProduct[k];
+      e.transactions += r.transactions||0; e.total_units += r.total_units||0;
+      if(r.avg_units_per_tx!=null){e._as+=r.avg_units_per_tx*(r.transactions||1);e._an+=r.transactions||1;}
+      e._4s += (r.pct_tx_4plus_units||0)*(r.transactions||1);
+    });
+    const topUnitProducts = Object.values(unitsByProduct)
+      .map(r=>({...r, avg_units_per_tx:r._an?+(r._as/r._an).toFixed(2):0, pct_tx_4plus_units:r.transactions?+(r._4s/r.transactions).toFixed(1):0}))
+      .sort((a,b)=>b.transactions-a.transactions).slice(0,50);
+
+    // AOV by category across full range
+    const aovByCat = {};
+    (S.aovData||[]).forEach(r => {
+      if(!aovByCat[r.category]) aovByCat[r.category] = {revenue:0, transactions:0};
+      aovByCat[r.category].revenue += r.revenue||0;
+      aovByCat[r.category].transactions += r.transactions||0;
+    });
+    const aovSummary = Object.entries(aovByCat).map(([cat,v])=>({category:cat, aov:v.transactions?+(v.revenue/v.transactions).toFixed(2):0, revenue:+v.revenue.toFixed(0), transactions:v.transactions})).sort((a,b)=>b.revenue-a.revenue);
+
+    // Category totals
+    const catTotals = {};
+    (S.categoryData||[]).forEach(r => {
+      if(!catTotals[r.category]) catTotals[r.category]={category:r.category,revenue:0,transactions:0,sessions:0,add_to_cart:0};
+      const e=catTotals[r.category];
+      e.revenue+=r.revenue||0;e.transactions+=r.transactions||0;e.sessions+=r.sessions||0;e.add_to_cart+=r.add_to_cart||0;
+    });
+    const catSummary = Object.values(catTotals).sort((a,b)=>b.revenue-a.revenue);
+
+    // Funnel summary
+    const fn=S.funnelData||[];
+    const totBC=fn.reduce((s,r)=>s+(r.begin_checkout||0),0);
+    const totP=fn.reduce((s,r)=>s+(r.purchase||0),0);
+    const totSh=fn.reduce((s,r)=>s+(r.add_shipping_info||0),0);
+    const totATC=fn.reduce((s,r)=>s+(r.add_to_cart||0),0);
+
+    // Weekly funnel around each change date for context
+    const funnelAroundChanges = (S.meta.delivery_changes||[]).map(ch => {
+      const before = fn.filter(r=>r.week>=ch.date.slice(0,7).replace('-','').slice(0,6) && r.week<ch.date).slice(-4);
+      const after  = fn.filter(r=>r.week>=ch.date).slice(0,4);
+      const avgShipBefore = before.length ? (before.reduce((s,r)=>s+(r.add_shipping_info||0),0)/before.length).toFixed(0) : null;
+      const avgShipAfter  = after.length  ? (after.reduce((s,r)=>s+(r.add_shipping_info||0),0)/after.length).toFixed(0)  : null;
+      const avgPurchBefore = before.length ? (before.reduce((s,r)=>s+(r.purchase||0),0)/before.length).toFixed(0) : null;
+      const avgPurchAfter  = after.length  ? (after.reduce((s,r)=>s+(r.purchase||0),0)/after.length).toFixed(0)  : null;
+      return {change:ch.label, date:ch.date, avgShipInfoBefore:avgShipBefore, avgShipInfoAfter:avgShipAfter, avgPurchaseBefore:avgPurchBefore, avgPurchaseAfter:avgPurchAfter};
+    });
+
+    const summary = {
+      dateRange: uniqueSortedWeeks(S.categoryData)[0] + ' to ' + uniqueSortedWeeks(S.categoryData).slice(-1)[0],
       deliveryChanges: S.meta.delivery_changes,
-      changeImpact: S.impactData||[],
-      changeImpactSubcat: (S.impactSubcat||[]).filter(d=>d.change_label.includes('2026')||d.change_label.includes('Aug 2025')),
-      funnelSummary: (() => {
-        const fn=S.funnelData;
-        const totBC=fn.reduce((s,r)=>s+(r.begin_checkout||0),0);
-        const totP=fn.reduce((s,r)=>s+(r.purchase||0),0);
-        const totSh=fn.reduce((s,r)=>s+(r.add_shipping_info||0),0);
-        return{totalBeginCheckout:totBC,totalPurchases:totP,checkoutToBuyRate:totBC?+(totP/totBC*100).toFixed(2):0,shipToPurchaseRate:totSh?+(totP/totSh*100).toFixed(2):0};
-      })(),
+      currentDeliveryStructure: S.meta.current_delivery,
+      changeImpactByCategory: S.impactData||[],
+      changeImpactBySubcategory: S.impactSubcat||[],
+      changeImpactByProduct: (S.impactProduct||[]).slice(0,200),
+      categorySummary: catSummary,
+      aovByCategory: aovSummary,
+      unitsPerTransactionTopProducts: topUnitProducts,
+      funnelOverall: {totalBeginCheckout:totBC, totalPurchases:totP, totalAddToCart:totATC, checkoutToBuyRate:totBC?+(totP/totBC*100).toFixed(2):0, atcToCheckoutRate:totATC?+(totBC/totATC*100).toFixed(2):0, shipToPurchaseRate:totSh?+(totP/totSh*100).toFixed(2):0},
+      funnelAroundChanges,
     };
     return JSON.stringify(summary);
   }
@@ -1280,12 +1339,31 @@ function initAI(){
 
     try{
       const ctx=buildContext();
-      const systemPrompt=`You are a data analyst for Barker & Stonehouse, a premium UK furniture retailer. You have access to GA4 ecommerce data showing how delivery cost changes affected sales performance.
+      const systemPrompt=`You are a data analyst for Barker & Stonehouse, a premium UK furniture retailer. You have full access to GA4 ecommerce data covering ${S.meta && S.meta.delivery_changes ? S.meta.delivery_changes.length : 3} delivery cost changes and their impact on performance.
 
-Here is the data context:
+You have access to the following data:
+- changeImpactByCategory: 4-week avg revenue, orders and AOV before vs after each delivery change, per category
+- changeImpactBySubcategory: same but at subcategory level (e.g. Dining Chairs within DINING AND LIVING)
+- changeImpactByProduct: same but per individual product (top 200)
+- unitsPerTransactionTopProducts: avg units per transaction and % of transactions with 4+ units, per product — use this to answer questions about basket size / how many items people buy per order
+- aovByCategory: average order value per category across the full period
+- categorySummary: total revenue, transactions, sessions and add-to-cart per category
+- funnelOverall: site-wide checkout funnel rates
+- funnelAroundChanges: add_shipping_info and purchase volumes 4 weeks before and after each change — use this to assess whether people abandoned after seeing the delivery cost
+- currentDeliveryStructure: current delivery pricing tiers
+- deliveryChanges: full history of all delivery cost changes
+
+Here is the full data:
 ${ctx}
 
-Answer questions directly and concisely. Use actual numbers from the data. Format currency as £. When discussing changes, compare the before and after figures. Be specific about which categories or products were affected. If something isn't in the data, say so.`;
+Rules:
+- Answer directly with actual numbers from the data
+- Format currency as £ with commas
+- When comparing before/after always show both figures and the % change
+- For units per transaction questions, use unitsPerTransactionTopProducts
+- For funnel abandonment questions, use funnelAroundChanges
+- If a specific product or category isn't in the data, say so and suggest the closest match
+- Be concise but specific — bullet points where helpful`;
 
       const apiKey = localStorage.getItem('anthropic_api_key');
       if(!apiKey){ thinking.remove(); addMsg('assistant','No API key found. Open the browser console and run: localStorage.setItem(\'anthropic_api_key\', \'your-key-here\')'); return; }
@@ -1352,6 +1430,18 @@ function initSettings(){
 //  DRILL LEVEL TOGGLE
 // ═══════════════════════════════════════════════════════
 function initDrillLevelToggle(){
+  function getActiveLevel(){
+    const active = document.querySelector('.drill-level-btn[style*="var(--navy)"]');
+    return active ? active.dataset.level : 'category';
+  }
+
+  function rerenderActiveLevel(){
+    const level = getActiveLevel();
+    if(level==='category') renderStoryCatTable();
+    else if(level==='subcategory') renderStorySubcatTable();
+    else renderStoryAllProductTable();
+  }
+
   document.querySelectorAll('.drill-level-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.drill-level-btn').forEach(b => {
@@ -1364,11 +1454,20 @@ function initDrillLevelToggle(){
       else if(level === 'product') renderStoryAllProductTable();
     });
   });
+
+  // Wire min tx filter - use event delegation since element is added dynamically
+  document.addEventListener('change', e => {
+    if(e.target.id === 'min-tx-filter') rerenderActiveLevel();
+  });
+  document.addEventListener('input', e => {
+    if(e.target.id === 'min-tx-filter') rerenderActiveLevel();
+  });
 }
 
 function renderStorySubcatTable(){
+  const minTxSub = parseInt(document.getElementById('min-tx-filter')?.value||'3');
   const rows = (S.impactSubcat||[])
-    .filter(d => d.change_label === S.selectedChange)
+    .filter(d => d.change_label === S.selectedChange && (d.avg_tx_before||0)>=minTxSub && (d.avg_tx_after||0)>=minTxSub)
     .sort((a,b) => Math.abs(b.rev_pct_change||0) - Math.abs(a.rev_pct_change||0));
   document.getElementById('story-cat-drill-title').textContent = S.selectedChange + ' — subcategory breakdown';
   document.getElementById('story-cat-tbody').innerHTML = rows.map(r => `
@@ -1409,8 +1508,9 @@ function renderStoryAllProductTable(){
     <th data-col="category">Category</th><th data-col="product_name">Product</th>
     <th class="num">Rev before</th><th class="num">Rev after</th><th class="num">Rev Δ%</th>
     <th class="num">Orders before</th><th class="num">Orders after</th><th class="num">Orders Δ%</th><th class="num">AOV Δ%</th>`;
+  const minTxProd = parseInt(document.getElementById('min-tx-filter')?.value||'3');
   const rows = (S.impactProduct||[])
-    .filter(d => d.change_label === S.selectedChange)
+    .filter(d => d.change_label === S.selectedChange && (d.avg_tx_before||0)>=minTxProd && (d.avg_tx_after||0)>=minTxProd)
     .sort((a,b) => Math.abs(b.rev_pct_change||0) - Math.abs(a.rev_pct_change||0))
     .slice(0,100);
   document.getElementById('story-cat-tbody').innerHTML = rows.map(r => `

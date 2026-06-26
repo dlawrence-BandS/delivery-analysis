@@ -223,17 +223,31 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
 
     <!-- MAIN NAV -->
     <div class="main-nav">
-      <button class="nav-btn active" data-panel="story">Impact Summary</button>
-      <button class="nav-btn" data-panel="overview">Explorer — Overview</button>
-      <button class="nav-btn" data-panel="category">By Category</button>
-      <button class="nav-btn" data-panel="subcategory">By Subcategory</button>
-      <button class="nav-btn" data-panel="product">By Product</button>
-      <button class="nav-btn" data-panel="funnel">Checkout Funnel</button>
-      <button class="nav-btn" data-panel="catfunnel">Funnel by Category</button>
-      <button class="nav-btn" data-panel="aov">AOV</button>
-      <button class="nav-btn" data-panel="units">Units per Transaction</button>
-      <button class="nav-btn" data-panel="delivery">Delivery Structure</button>
-      <button class="nav-btn" data-panel="tierstats">Tier Performance</button>
+      <button class="nav-btn active" data-section="impact" data-panel="story">Impact Summary</button>
+      <button class="nav-btn" data-section="explorer" data-panel="overview">Explorer</button>
+      <button class="nav-btn" data-section="funnel" data-panel="funnel">Checkout Funnel</button>
+      <button class="nav-btn" data-section="delivery" data-panel="delivery">Delivery</button>
+    </div>
+
+    <!-- SUB NAV -->
+    <div class="sub-nav" id="sub-nav-impact" style="display:flex">
+      <!-- no sub for impact -->
+    </div>
+    <div class="sub-nav" id="sub-nav-explorer" style="display:none">
+      <button class="sub-btn active" data-panel="overview">Overview</button>
+      <button class="sub-btn" data-panel="category">By Category</button>
+      <button class="sub-btn" data-panel="subcategory">By Subcategory</button>
+      <button class="sub-btn" data-panel="product">By Product</button>
+      <button class="sub-btn" data-panel="aov">AOV</button>
+      <button class="sub-btn" data-panel="units">Units per Transaction</button>
+    </div>
+    <div class="sub-nav" id="sub-nav-funnel" style="display:none">
+      <button class="sub-btn active" data-panel="funnel">Site-wide Funnel</button>
+      <button class="sub-btn" data-panel="catfunnel">By Category / Product</button>
+    </div>
+    <div class="sub-nav" id="sub-nav-delivery" style="display:none">
+      <button class="sub-btn active" data-panel="delivery">Delivery Structure</button>
+      <button class="sub-btn" data-panel="tierstats">Tier Performance</button>
     </div>
 
     <!-- ══════════════════════ IMPACT SUMMARY (story-first) ══════════════════════ -->
@@ -810,14 +824,59 @@ async function initDashboard(){
 //  NAV
 // ═══════════════════════════════════════════════════════
 function initNav(){
+  // Section → default panel mapping
+  const sectionDefaults = {
+    impact:   'story',
+    explorer: 'overview',
+    funnel:   'funnel',
+    delivery: 'delivery',
+  };
+
+  function showPanel(panelId){
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    const el = document.getElementById('panel-'+panelId);
+    if(el) el.classList.add('active');
+  }
+
+  function showSection(section, panelId){
+    // Update main nav
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn[data-section="'+section+'"]').forEach(b=>b.classList.add('active'));
+    // Show correct sub-nav
+    document.querySelectorAll('.sub-nav').forEach(s=>s.style.display='none');
+    const subNav = document.getElementById('sub-nav-'+section);
+    if(subNav){ subNav.style.display='flex'; }
+    // Update sub-nav active state
+    if(subNav){
+      subNav.querySelectorAll('.sub-btn').forEach(b=>b.classList.remove('active'));
+      const activeSubBtn = subNav.querySelector('[data-panel="'+panelId+'"]');
+      if(activeSubBtn) activeSubBtn.classList.add('active');
+    }
+    showPanel(panelId);
+  }
+
+  // Main nav clicks
   document.querySelectorAll('.nav-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+      const section = btn.dataset.section;
+      const panel = sectionDefaults[section] || btn.dataset.panel;
+      showSection(section, panel);
     });
   });
+
+  // Sub-nav clicks
+  document.querySelectorAll('.sub-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const panel = btn.dataset.panel;
+      // Find which section this sub-nav belongs to
+      const subNavEl = btn.closest('.sub-nav');
+      const section = subNavEl ? subNavEl.id.replace('sub-nav-','') : null;
+      if(section) showSection(section, panel);
+    });
+  });
+
+  // Init — show impact/story
+  showSection('impact','story');
 }
 
 // ═══════════════════════════════════════════════════════

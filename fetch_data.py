@@ -40,6 +40,8 @@ EVENTS_TABLE = f"`{PROJECT_ID}.{DATASET}.events_*`"
 # Output directory (relative to this script)
 OUTPUT_DIR = Path(__file__).parent / "data"
 
+
+
 # ─── DELIVERY CHANGE ANNOTATIONS (shared with dashboard via meta.json) ────────
 
 DELIVERY_CHANGES = [
@@ -104,6 +106,9 @@ WITH item_events AS (
     AND event_name IN ('purchase','add_to_cart','view_item','begin_checkout')
     AND item.item_category IS NOT NULL
     AND item.item_category != ''
+    AND item.item_category NOT IN ('shop','Sofas','Beds','New In','Need It Quick','Black Friday','Accessories','51714','51716','51718','51720')
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 purchases AS (
   SELECT week, category,
@@ -159,6 +164,9 @@ WITH item_events AS (
     AND event_name IN ('purchase','add_to_cart','view_item','begin_checkout')
     AND item.item_category2 IS NOT NULL
     AND item.item_category2 != ''
+    AND item.item_category NOT IN ('shop','Sofas','Beds','New In','Need It Quick','Black Friday','Accessories','51714','51716','51718','51720')
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 purchases AS (
   SELECT week, category, subcategory,
@@ -306,6 +314,12 @@ WITH purchases AS (
   WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
     AND event_name = 'purchase'
     AND item.item_category IS NOT NULL AND item.item_category != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 deduped AS (
   SELECT week, category, transaction_id, MAX(order_revenue) AS order_revenue
@@ -378,6 +392,12 @@ WITH weekly_cat AS (
   WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
     AND event_name = 'purchase'
     AND item.item_category IS NOT NULL AND item.item_category != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 weekly_agg AS (
   SELECT
@@ -451,6 +471,12 @@ WITH purchase_items AS (
   WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
     AND event_name = 'purchase'
     AND item.item_category2 IS NOT NULL AND item.item_category2 != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 weekly_agg AS (
   SELECT week, category, subcategory,
@@ -581,6 +607,12 @@ WITH item_events AS (
   WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
     AND event_name IN ('view_item','add_to_cart','begin_checkout','purchase')
     AND item.item_category IS NOT NULL AND item.item_category != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 -- Category level
 cat_views AS (
@@ -630,6 +662,12 @@ WITH item_events AS (
   WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
     AND event_name IN ('view_item','add_to_cart','begin_checkout','purchase')
     AND item.item_category2 IS NOT NULL AND item.item_category2 != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
 ),
 sub_views    AS (SELECT week, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS views         FROM item_events WHERE event_name='view_item'     GROUP BY 1,2,3),
 sub_atc      AS (SELECT week, category, subcategory, COUNT(DISTINCT user_pseudo_id) AS add_to_cart   FROM item_events WHERE event_name='add_to_cart'    GROUP BY 1,2,3),
@@ -692,6 +730,87 @@ LEFT JOIN prod_atc      a USING (week, product_name)
 LEFT JOIN prod_checkout c USING (week, product_name)
 LEFT JOIN prod_purchase p USING (week, product_name)
 ORDER BY v.week, v.product_name
+"""
+
+
+DELIVERY_TIER_QUERY = f"""
+WITH item_events AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    item.item_category2 AS subcategory,
+    item.item_category  AS category,
+    event_name,
+    ecommerce.transaction_id AS transaction_id,
+    item.price * item.quantity AS item_revenue,
+    user_pseudo_id
+  FROM {EVENTS_TABLE}
+  CROSS JOIN UNNEST(items) AS item
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name IN ('purchase','add_to_cart','view_item','begin_checkout')
+    AND item.item_category IS NOT NULL AND item.item_category != ''
+    AND item.item_category NOT IN (
+      'shop','Sofas','Beds','New In','Need It Quick','Black Friday',
+      'Accessories','51714','51716','51718','51720'
+    )
+    AND LENGTH(item.item_category) > 2
+    AND REGEXP_CONTAINS(item.item_category, r'^[A-Z]')
+),
+-- Map subcategory to delivery tier
+tiered AS (
+  SELECT *,
+    CASE
+      WHEN subcategory IN ('Sofas','Sofa Beds','Wardrobes','Large Sofas','Corner Sofas','Sofa Beds') THEN 'Large £99 (B&S)'
+      WHEN subcategory IN ('Dining Tables','Dining Sets','Beds','Sideboards','Recliner Chairs','Bookcases','Cabinets','Benches','Display Cabinets','Dressers') THEN 'Medium £69 (B&S)'
+      WHEN subcategory IN ('Armchairs','TV Units','Coffee Tables','Chest of Drawers','Console Tables','Lamp Tables','Desks','Dressing Tables') THEN 'Medium £49 (DX 2-crew)'
+      WHEN subcategory IN ('Mattresses') THEN 'Mattress £29 (B&S)'
+      WHEN subcategory IN ('Dining Chairs','Bar Stools','Bedside Tables','Footstools','Small Tables','Benches') THEN 'Small £15 (DPD)'
+      WHEN subcategory IN ('Cushions','Vases','Candles','Plants','Clocks','Throws','Ornaments','Trays','Baskets','Diffusers') THEN 'Small accessories £6 (DPD)'
+      WHEN subcategory IN ('Rugs','Mirrors','Floor Lamps','Ceiling Lamps','Wall Art','Pictures and Wall Art','Table Lamps') THEN 'Large accessories £29 (DPD)'
+      WHEN category = 'GARDEN' THEN 'Garden (Free/£29)'
+      ELSE 'Other'
+    END AS delivery_tier
+  FROM item_events
+),
+purchases AS (
+  SELECT week, delivery_tier,
+    COUNT(DISTINCT transaction_id) AS transactions,
+    ROUND(SUM(item_revenue), 2) AS revenue
+  FROM tiered WHERE event_name = 'purchase'
+  GROUP BY 1,2
+),
+atc AS (
+  SELECT week, delivery_tier, COUNT(DISTINCT user_pseudo_id) AS add_to_cart
+  FROM tiered WHERE event_name = 'add_to_cart'
+  GROUP BY 1,2
+),
+views AS (
+  SELECT week, delivery_tier, COUNT(DISTINCT user_pseudo_id) AS product_views
+  FROM tiered WHERE event_name = 'view_item'
+  GROUP BY 1,2
+),
+checkout AS (
+  SELECT week, delivery_tier, COUNT(DISTINCT user_pseudo_id) AS begin_checkout
+  FROM tiered WHERE event_name = 'begin_checkout'
+  GROUP BY 1,2
+)
+SELECT
+  p.week,
+  p.delivery_tier,
+  p.transactions,
+  p.revenue,
+  COALESCE(v.product_views, 0) AS product_views,
+  COALESCE(a.add_to_cart, 0)   AS add_to_cart,
+  COALESCE(c.begin_checkout, 0) AS begin_checkout,
+  ROUND(SAFE_DIVIDE(p.revenue, p.transactions), 2) AS aov,
+  ROUND(SAFE_DIVIDE(p.transactions, NULLIF(v.product_views,0)) * 100, 3) AS pdp_cvr,
+  ROUND(SAFE_DIVIDE(COALESCE(a.add_to_cart,0), NULLIF(v.product_views,0)) * 100, 2) AS view_to_atc,
+  ROUND(SAFE_DIVIDE(COALESCE(c.begin_checkout,0), NULLIF(a.add_to_cart,0)) * 100, 2) AS atc_to_checkout,
+  ROUND(SAFE_DIVIDE(p.transactions, NULLIF(c.begin_checkout,0)) * 100, 2) AS checkout_to_purchase
+FROM purchases p
+LEFT JOIN atc      a USING (week, delivery_tier)
+LEFT JOIN views    v USING (week, delivery_tier)
+LEFT JOIN checkout c USING (week, delivery_tier)
+ORDER BY p.week, p.delivery_tier
 """
 
 # ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -784,6 +903,10 @@ def main():
     print("\nFetching product funnel...")
     product_funnel = run_query(client, PRODUCT_FUNNEL_QUERY, "product funnel weekly")
     write_json(OUTPUT_DIR / "product_funnel.json", product_funnel)
+
+    print("\nFetching delivery tier performance...")
+    tier_data = run_query(client, DELIVERY_TIER_QUERY, "delivery tier weekly")
+    write_json(OUTPUT_DIR / "delivery_tier.json", tier_data)
 
     print("\nWriting meta...")
     meta = {

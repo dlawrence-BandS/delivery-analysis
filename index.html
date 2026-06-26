@@ -233,6 +233,7 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
       <button class="nav-btn" data-panel="aov">AOV</button>
       <button class="nav-btn" data-panel="units">Units per Transaction</button>
       <button class="nav-btn" data-panel="delivery">Delivery Structure</button>
+      <button class="nav-btn" data-panel="tierstats">Tier Performance</button>
     </div>
 
     <!-- ══════════════════════ IMPACT SUMMARY (story-first) ══════════════════════ -->
@@ -547,6 +548,58 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
       <div id="delivery-timeline"></div>
     </div>
 
+
+    <!-- ══════════════════════ TIER PERFORMANCE ══════════════════════ -->
+    <div class="tab-panel" id="panel-tierstats">
+      <div class="change-legend"><h3>Delivery changes plotted on charts</h3><div class="legend-items" id="tier-legend"></div></div>
+      <div class="filters-bar">
+        <div class="fg"><label>Date from</label><input type="date" id="tier-from"></div>
+        <div class="fg"><label>Date to</label><input type="date" id="tier-to"></div>
+        <button class="btn-sm" id="tier-reset">Reset</button>
+      </div>
+
+      <!-- Summary cards per tier -->
+      <div id="tier-summary-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:24px"></div>
+
+      <!-- Trend chart -->
+      <div class="chart-card" id="tier-trend-card">
+        <h3 id="tier-trend-title">Delivery tier — weekly trend</h3>
+        <div class="chart-sub">Click a tier card above to isolate, or view all</div>
+        <div class="metric-tabs" id="tier-metric-tabs">
+          <button class="m-tab active" data-metric="revenue">Revenue</button>
+          <button class="m-tab" data-metric="transactions">Transactions</button>
+          <button class="m-tab" data-metric="aov">AOV</button>
+          <button class="m-tab" data-metric="pdp_cvr">PDP CVR %</button>
+          <button class="m-tab" data-metric="view_to_atc">View→ATC %</button>
+          <button class="m-tab" data-metric="atc_to_checkout">ATC→Checkout %</button>
+          <button class="m-tab" data-metric="checkout_to_purchase">Checkout→Buy %</button>
+        </div>
+        <div class="chart-wrap tall"><canvas id="tier-trend-chart"></canvas></div>
+      </div>
+
+      <!-- Summary table -->
+      <div class="section-hdr" style="margin-top:24px"><h2>Tier summary table</h2><span>All metrics averaged across selected period</span></div>
+      <div class="drill-section" style="padding:0">
+        <div class="table-wrap">
+          <table class="data-table" id="tier-table">
+            <thead><tr>
+              <th data-col="delivery_tier">Delivery tier</th>
+              <th data-col="revenue" class="num">Revenue</th>
+              <th data-col="transactions" class="num">Orders</th>
+              <th data-col="aov" class="num">AOV</th>
+              <th data-col="product_views" class="num">PDP views</th>
+              <th data-col="add_to_cart" class="num">ATC</th>
+              <th data-col="pdp_cvr" class="num">PDP CVR %</th>
+              <th data-col="view_to_atc" class="num">View→ATC %</th>
+              <th data-col="atc_to_checkout" class="num">ATC→Checkout %</th>
+              <th data-col="checkout_to_purchase" class="num">Checkout→Buy %</th>
+            </tr></thead>
+            <tbody id="tier-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /mainContent -->
 </div><!-- /page-wrap -->
 
@@ -707,7 +760,7 @@ async function loadJSON(p){
 
 async function initDashboard(){
   try{
-    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd,catFunnel,subcatFunnel,prodFunnel]=await Promise.all([
+    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd,catFunnel,subcatFunnel,prodFunnel,tierData]=await Promise.all([
       loadJSON('data/meta.json'),
       loadJSON('data/category_weekly.json'),
       loadJSON('data/subcategory_weekly.json'),
@@ -721,11 +774,13 @@ async function initDashboard(){
       loadJSON('data/category_funnel.json').catch(()=>[]),
       loadJSON('data/subcategory_funnel.json').catch(()=>[]),
       loadJSON('data/product_funnel.json').catch(()=>[]),
+      loadJSON('data/delivery_tier.json').catch(()=>[]),
     ]);
     S.meta=meta; S.categoryData=cat; S.subcategoryData=subcat; S.productData=prod;
     S.funnelData=funnel; S.aovData=aov; S.unitsData=units;
     S.impactData=impact; S.impactSubcat=impactSubcat; S.impactProduct=impactProd;
     S.catFunnelData=catFunnel||[]; S.subcatFunnelData=subcatFunnel||[]; S.prodFunnelData=prodFunnel||[];
+    S.tierData=tierData||[];
 
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
@@ -743,6 +798,7 @@ async function initDashboard(){
     initUnits();
     initDelivery();
     initCatFunnel();
+    initTierStats();
     initAI();
 
   }catch(err){
@@ -2064,6 +2120,194 @@ function initCatFunnel(){
     fromEl.value=minD; toEl.value=maxD; popSubcats(''); render();
   });
 
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TIER PERFORMANCE
+// ═══════════════════════════════════════════════════════
+function initTierStats(){
+  if(!S.tierData||!S.tierData.length) return;
+  buildLegend('tier-legend');
+
+  const allWeeks = uniqueSortedWeeks(S.tierData);
+  const minD = allWeeks[0], maxD = allWeeks[allWeeks.length-1];
+  const fromEl = document.getElementById('tier-from');
+  const toEl   = document.getElementById('tier-to');
+  fromEl.value=minD; toEl.value=maxD; fromEl.min=minD; fromEl.max=maxD; toEl.min=minD; toEl.max=maxD;
+
+  // Tier colours
+  const TIER_COLORS = {
+    'Large £99 (B&S)':          '#1A2A49',
+    'Medium £69 (B&S)':         '#2980B9',
+    'Medium £49 (DX 2-crew)':   '#8E44AD',
+    'Mattress £29 (B&S)':       '#16A085',
+    'Small £15 (DPD)':          '#E67E22',
+    'Small accessories £6 (DPD)':'#F39C12',
+    'Large accessories £29 (DPD)':'#C0392B',
+    'Garden (Free/£29)':        '#2D8A5F',
+    'Other':                    '#95A5A6',
+  };
+
+  let tierMetric = 'revenue';
+  let selectedTier = null;
+  let tierSortCol = 'revenue', tierSortDir = 'desc';
+
+  function aggregateTiers(df, dt){
+    const weeks = new Set(isoWeeks(S.tierData, df, dt).map(d=>d.week));
+    const map = {};
+    S.tierData.filter(d=>weeks.has(d.week)).forEach(r=>{
+      const k=r.delivery_tier; if(!k)return;
+      if(!map[k]) map[k]={delivery_tier:k, revenue:0, transactions:0, product_views:0, add_to_cart:0, begin_checkout:0, _aovS:0, _aovN:0, _pdpS:0, _pdpN:0, _v2aS:0, _v2aN:0, _a2cS:0, _a2cN:0, _c2pS:0, _c2pN:0};
+      const e=map[k];
+      e.revenue+=r.revenue||0; e.transactions+=r.transactions||0;
+      e.product_views+=r.product_views||0; e.add_to_cart+=r.add_to_cart||0;
+      e.begin_checkout+=r.begin_checkout||0;
+      if(r.aov){e._aovS+=r.aov*(r.transactions||1);e._aovN+=r.transactions||1;}
+      if(r.pdp_cvr){e._pdpS+=r.pdp_cvr*(r.product_views||1);e._pdpN+=r.product_views||1;}
+      if(r.view_to_atc){e._v2aS+=r.view_to_atc*(r.product_views||1);e._v2aN+=r.product_views||1;}
+      if(r.atc_to_checkout){e._a2cS+=r.atc_to_checkout*(r.add_to_cart||1);e._a2cN+=r.add_to_cart||1;}
+      if(r.checkout_to_purchase){e._c2pS+=r.checkout_to_purchase*(r.begin_checkout||1);e._c2pN+=r.begin_checkout||1;}
+    });
+    return Object.values(map).map(r=>({
+      ...r,
+      aov: r._aovN?+(r._aovS/r._aovN).toFixed(2):0,
+      pdp_cvr: r._pdpN?+(r._pdpS/r._pdpN).toFixed(3):0,
+      view_to_atc: r._v2aN?+(r._v2aS/r._v2aN).toFixed(2):0,
+      atc_to_checkout: r._a2cN?+(r._a2cS/r._a2cN).toFixed(2):0,
+      checkout_to_purchase: r._c2pN?+(r._c2pS/r._c2pN).toFixed(2):0,
+    }));
+  }
+
+  function render(){
+    const df=fromEl.value||minD, dt=toEl.value||maxD;
+    const agg = aggregateTiers(df,dt).filter(r=>r.delivery_tier!=='Other')
+      .sort((a,b)=>b.revenue-a.revenue);
+
+    // Summary cards
+    document.getElementById('tier-summary-cards').innerHTML = agg.map(r=>`
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;border-top:3px solid ${TIER_COLORS[r.delivery_tier]||'#ccc'};transition:all .15s"
+           class="tier-card" data-tier="${r.delivery_tier.replace(/"/g,'&quot;')}">
+        <div style="font-size:11px;font-weight:700;color:${TIER_COLORS[r.delivery_tier]||'#ccc'};text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${r.delivery_tier}</div>
+        <div style="font-size:19px;font-weight:800;color:var(--navy);letter-spacing:-.02em">${fmt.currency(r.revenue)}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px">
+          <div style="font-size:11px;color:var(--muted)">Orders: <strong style="color:var(--text)">${fmt.n(r.transactions)}</strong></div>
+          <div style="font-size:11px;color:var(--muted)">AOV: <strong style="color:var(--text)">${fmt.currency(r.aov)}</strong></div>
+          <div style="font-size:11px;color:var(--muted)">ATC→Chk: <strong style="color:var(--text)">${r.atc_to_checkout.toFixed(1)}%</strong></div>
+          <div style="font-size:11px;color:var(--muted)">Chk→Buy: <strong style="color:var(--text)">${r.checkout_to_purchase.toFixed(1)}%</strong></div>
+        </div>
+      </div>`).join('');
+
+    // Card click → isolate tier
+    document.querySelectorAll('.tier-card').forEach(card=>{
+      card.addEventListener('click',()=>{
+        if(selectedTier===card.dataset.tier){
+          selectedTier=null;
+          document.querySelectorAll('.tier-card').forEach(c=>c.style.opacity='1');
+        } else {
+          selectedTier=card.dataset.tier;
+          document.querySelectorAll('.tier-card').forEach(c=>c.style.opacity=c.dataset.tier===selectedTier?'1':'0.4');
+        }
+        renderTrendChart(df,dt);
+      });
+    });
+
+    // Table
+    const sorted = [...agg].sort((a,b)=>{
+      const av=a[tierSortCol]||0, bv=b[tierSortCol]||0;
+      return tierSortDir==='desc'?bv-av:av-bv;
+    });
+    document.getElementById('tier-tbody').innerHTML = sorted.map(r=>`
+      <tr>
+        <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${TIER_COLORS[r.delivery_tier]||'#ccc'};margin-right:7px"></span>${r.delivery_tier}</td>
+        <td class="num">${fmt.currency(r.revenue)}</td>
+        <td class="num">${fmt.n(r.transactions)}</td>
+        <td class="num">${fmt.currency(r.aov)}</td>
+        <td class="num">${fmt.n(r.product_views)}</td>
+        <td class="num">${fmt.n(r.add_to_cart)}</td>
+        <td class="num">${r.pdp_cvr.toFixed(3)}%</td>
+        <td class="num">${r.view_to_atc.toFixed(2)}%</td>
+        <td class="num">${r.atc_to_checkout.toFixed(2)}%</td>
+        <td class="num">${r.checkout_to_purchase.toFixed(2)}%</td>
+      </tr>`).join('');
+
+    renderTrendChart(df,dt);
+  }
+
+  function renderTrendChart(df,dt){
+    const weeks = uniqueSortedWeeks(isoWeeks(S.tierData,df,dt));
+    const tiers = selectedTier
+      ? [selectedTier]
+      : [...new Set(S.tierData.filter(d=>d.delivery_tier!=='Other').map(d=>d.delivery_tier))];
+
+    const datasets = tiers.map(tier=>{
+      const wm={};
+      isoWeeks(S.tierData,df,dt).filter(d=>d.delivery_tier===tier).forEach(r=>{
+        if(!wm[r.week])wm[r.week]={revenue:0,transactions:0,product_views:0,add_to_cart:0,begin_checkout:0,_aovS:0,_aovN:0,_v2aS:0,_v2aN:0,_a2cS:0,_a2cN:0,_c2pS:0,_c2pN:0};
+        const e=wm[r.week];
+        e.revenue+=r.revenue||0; e.transactions+=r.transactions||0;
+        e.product_views+=r.product_views||0; e.add_to_cart+=r.add_to_cart||0; e.begin_checkout+=r.begin_checkout||0;
+        if(r.aov){e._aovS+=r.aov*(r.transactions||1);e._aovN+=r.transactions||1;}
+        if(r.view_to_atc){e._v2aS+=r.view_to_atc*(r.product_views||1);e._v2aN+=r.product_views||1;}
+        if(r.atc_to_checkout){e._a2cS+=r.atc_to_checkout*(r.add_to_cart||1);e._a2cN+=r.add_to_cart||1;}
+        if(r.checkout_to_purchase){e._c2pS+=r.checkout_to_purchase*(r.begin_checkout||1);e._c2pN+=r.begin_checkout||1;}
+      });
+      const vals = weeks.map(w=>{
+        const e=wm[w]; if(!e)return null;
+        if(tierMetric==='aov') return e._aovN?+(e._aovS/e._aovN).toFixed(2):null;
+        if(tierMetric==='view_to_atc') return e._v2aN?+(e._v2aS/e._v2aN).toFixed(2):null;
+        if(tierMetric==='atc_to_checkout') return e._a2cN?+(e._a2cS/e._a2cN).toFixed(2):null;
+        if(tierMetric==='checkout_to_purchase') return e._c2pN?+(e._c2pS/e._c2pN).toFixed(2):null;
+        if(tierMetric==='pdp_cvr') return e.product_views?+(e.transactions/e.product_views*100).toFixed(3):null;
+        return e[tierMetric]||0;
+      });
+      return {
+        label:tier, data:vals,
+        borderColor:TIER_COLORS[tier]||'#ccc',
+        backgroundColor:'transparent',
+        tension:0.3, pointRadius:2, spanGaps:true,
+      };
+    });
+
+    const isRate = ['pdp_cvr','view_to_atc','atc_to_checkout','checkout_to_purchase'].includes(tierMetric);
+    const yLabel = tierMetric==='revenue'?'£':tierMetric==='aov'?'£':isRate?'%':'';
+    const anns = changeAnnotations(weeks);
+    document.getElementById('tier-trend-title').textContent = selectedTier
+      ? `${selectedTier} — weekly ${tierMetric.replace(/_/g,' ')}`
+      : `All delivery tiers — weekly ${tierMetric.replace(/_/g,' ')}`;
+    buildLineChart('tier-trend-chart', weeks, datasets, anns, yLabel);
+  }
+
+  // Sort table
+  makeSortableTable('tier-table','tierSortCol','tierSortDir',()=>{
+    const df=fromEl.value||minD, dt=toEl.value||maxD;
+    const agg=aggregateTiers(df,dt).filter(r=>r.delivery_tier!=='Other')
+      .sort((a,b)=>{const av=a[tierSortCol]||0,bv=b[tierSortCol]||0;return tierSortDir==='desc'?bv-av:av-bv;});
+    document.getElementById('tier-tbody').innerHTML=agg.map(r=>`
+      <tr>
+        <td style="font-weight:600"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${TIER_COLORS[r.delivery_tier]||'#ccc'};margin-right:7px"></span>${r.delivery_tier}</td>
+        <td class="num">${fmt.currency(r.revenue)}</td>
+        <td class="num">${fmt.n(r.transactions)}</td>
+        <td class="num">${fmt.currency(r.aov)}</td>
+        <td class="num">${fmt.n(r.product_views)}</td>
+        <td class="num">${fmt.n(r.add_to_cart)}</td>
+        <td class="num">${r.pdp_cvr.toFixed(3)}%</td>
+        <td class="num">${r.view_to_atc.toFixed(2)}%</td>
+        <td class="num">${r.atc_to_checkout.toFixed(2)}%</td>
+        <td class="num">${r.checkout_to_purchase.toFixed(2)}%</td>
+      </tr>`).join('');
+  });
+
+  document.getElementById('tier-metric-tabs').querySelectorAll('.m-tab').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById('tier-metric-tabs').querySelectorAll('.m-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); tierMetric=btn.dataset.metric;
+      renderTrendChart(fromEl.value||minD, toEl.value||maxD);
+    });
+  });
+
+  fromEl.addEventListener('change',render); toEl.addEventListener('change',render);
+  document.getElementById('tier-reset').addEventListener('click',()=>{fromEl.value=minD;toEl.value=maxD;selectedTier=null;render();});
   render();
 }
 // ─── Boot

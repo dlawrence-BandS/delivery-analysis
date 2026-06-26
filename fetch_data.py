@@ -72,6 +72,52 @@ DELIVERY_CHANGES = [
     }
 ]
 
+# Promotional sale periods — used as context annotations on all charts
+SALE_PERIODS = [
+    {
+        "start": "2025-02-01",
+        "end": "2025-03-01",
+        "label": "Winter Sale ends",
+        "detail": "Winter Sale 2024/25 — ends 1st March 2025"
+    },
+    {
+        "start": "2025-03-29",
+        "end": "2025-06-02",
+        "label": "Spring Promotion",
+        "detail": "Spring Preview & Sale 2025 — ends early June 2025"
+    },
+    {
+        "start": "2025-06-21",
+        "end": "2025-09-01",
+        "label": "Summer Sale",
+        "detail": "Summer Sale 2025 — ends 31st August 2025"
+    },
+    {
+        "start": "2025-09-27",
+        "end": "2025-11-23",
+        "label": "Autumn Promotion",
+        "detail": "Autumn Promotion 2025 — ends 22nd November 2025"
+    },
+    {
+        "start": "2025-12-26",
+        "end": "2026-03-01",
+        "label": "Winter Sale",
+        "detail": "Winter Sale 2025/26 — Boxing Day start, ends 1st March 2026"
+    },
+    {
+        "start": "2026-03-28",
+        "end": "2026-05-25",
+        "label": "Spring Promotion",
+        "detail": "Spring Preview & Sale 2026 — starts 28th March, ends 25th May 2026"
+    },
+    {
+        "start": "2026-06-20",
+        "end": "2026-08-31",
+        "label": "Summer Sale",
+        "detail": "Summer Sale 2026 — starts 20th June, ends 31st August 2026"
+    },
+]
+
 # Current delivery structure (post March 2026) for reference in dashboard
 CURRENT_DELIVERY = [
     {"tier": "Large furniture",        "price": 99,  "carrier": "B&S",   "examples": "Sofas, sofa beds, wardrobes"},
@@ -999,6 +1045,7 @@ def main():
         "last_updated": datetime.now(timezone.utc).isoformat(),
         "project_id": PROJECT_ID,
         "delivery_changes": DELIVERY_CHANGES,
+        "sale_periods": SALE_PERIODS,
         "current_delivery": CURRENT_DELIVERY
     }
     write_json(OUTPUT_DIR / "meta.json", meta)

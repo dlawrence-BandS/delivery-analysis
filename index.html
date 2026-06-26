@@ -698,9 +698,12 @@ function uniqueSortedWeeks(data){ return [...new Set(data.map(d=>d.week))].sort(
 
 function changeAnnotations(weeks){
   const changes = S.meta.delivery_changes;
+  const salePeriods = S.meta.sale_periods || [];
   const minWeek = weeks[0], maxWeek = weeks[weeks.length-1];
   const anns={};
   let ci=0;
+
+  // Delivery change lines
   changes.forEach((ch,i)=>{
     if(ch.date<minWeek)return;
     const tw = weeks.find(w=>w>=ch.date)||maxWeek;
@@ -713,13 +716,41 @@ function changeAnnotations(weeks){
     };
     ci++;
   });
+
+  // Sale period shading
+  salePeriods.forEach((sp,i)=>{
+    if(sp.end < minWeek || sp.start > maxWeek) return;
+    const startWeek = weeks.find(w=>w>=sp.start) || minWeek;
+    const endWeek = weeks.slice().reverse().find(w=>w<=sp.end) || maxWeek;
+    const x0 = weeks.indexOf(startWeek);
+    const x1 = weeks.indexOf(endWeek);
+    if(x0<0||x1<0||x0>x1) return;
+    anns[`sale${i}`]={
+      type:'box',
+      xMin:x0, xMax:x1,
+      backgroundColor:'rgba(200,169,110,0.08)',
+      borderColor:'rgba(200,169,110,0.3)',
+      borderWidth:1,
+      label:{
+        display:true,
+        content:sp.label,
+        position:{x:'start',y:'start'},
+        color:'rgba(180,140,60,0.7)',
+        font:{size:9,weight:'600'},
+        padding:{x:4,y:2},
+        backgroundColor:'transparent',
+      }
+    };
+  });
+
   return anns;
 }
 
 function buildLegend(containerId){
   const changes = S.meta.delivery_changes;
+  const salePeriods = S.meta.sale_periods || [];
   const allWeeks = uniqueSortedWeeks(S.categoryData.concat(S.funnelData));
-  const minWeek = allWeeks[0];
+  const minWeek = allWeeks[0], maxWeek = allWeeks[allWeeks.length-1];
   const relevant = changes.filter(ch=>ch.date>=minWeek);
   const el = document.getElementById(containerId);
   if(!el)return;
@@ -727,7 +758,8 @@ function buildLegend(containerId){
     <div class="legend-item">
       <div class="legend-dot" style="background:${CHANGE_COLORS[i%CHANGE_COLORS.length]}"></div>
       <div><strong>${ch.date} — ${ch.label}</strong><span>${ch.detail}</span></div>
-    </div>`).join('');
+    </div>`).join('')
+  + '<div class="legend-item" style="min-width:100%"><div class="legend-dot" style="background:rgba(200,169,110,0.4);border:1px solid rgba(200,169,110,0.6)"></div><div><strong style="font-size:11px">Gold shading</strong><span>Promotional sale periods — consider when interpreting spikes</span></div></div>';
 }
 
 function buildLineChart(id,labels,datasets,anns,yLabel=''){

@@ -1380,19 +1380,134 @@ function initUnits(){
 //  DELIVERY STRUCTURE
 // ═══════════════════════════════════════════════════════
 function initDelivery(){
+  const cc={'B&S':'#1A2A49','DPD':'#E67E22','DX 2-crew':'#8E44AD','DX':'#8E44AD','N/A':'#7A8BA0','Free':'#2D8A5F'};
+
+  // Current structure cards
   const current=S.meta.current_delivery||[];
-  const cc={'B&S':'#1A2A49','DPD':'#E67E22','DX 2-crew':'#8E44AD','N/A':'#7A8BA0'};
   document.getElementById('delivery-cards').innerHTML=current.map(t=>`
     <div class="delivery-card" style="border-top:3px solid ${cc[t.carrier]||'#ccc'}">
-      <div class="dc-header"><span class="dc-tier">${t.tier}</span><span class="dc-price">£${t.price}</span></div>
+      <div class="dc-header"><span class="dc-tier">${t.tier}</span><span class="dc-price">${t.price===0?'FREE':'£'+t.price}</span></div>
       <div class="dc-carrier" style="color:${cc[t.carrier]||'#999'}">${t.carrier}</div>
       <div class="dc-examples">${t.examples}</div>
     </div>`).join('');
-  document.getElementById('delivery-timeline').innerHTML=(S.meta.delivery_changes||[]).map((ch,i)=>`
-    <div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)">
-      <div style="width:3px;min-width:3px;border-radius:2px;background:${CHANGE_COLORS[i%CHANGE_COLORS.length]};align-self:stretch"></div>
-      <div><strong style="font-size:13px;color:var(--navy)">${ch.date} — ${ch.label}</strong><div style="font-size:12px;color:var(--muted);margin-top:3px">${ch.detail}</div></div>
-    </div>`).join('');
+
+  // Full pricing history table
+  const history = [
+    {
+      period: 'Original structure (pre Aug 2023)',
+      rows: [
+        {method:'Collection',                  code:'',              price:'FREE', carrier:'Self',  notes:'From warehouse or store'},
+        {method:'Accessories',                 code:'DPDACC',        price:'£5.95',carrier:'DPD',   notes:''},
+        {method:'Rugs',                        code:'RUGPARCEL',     price:'£12.95',carrier:'DPD',  notes:''},
+        {method:'Dining chairs, bar stools, bedsides, lamp tables (max 4)', code:'DPDDINCHAI', price:'£9.95', carrier:'DPD', notes:'Max 4 items'},
+        {method:'Mattress, mirrors, lighting & fragile', code:'BSMATTRESS', price:'£29', carrier:'B&S', notes:''},
+        {method:'Furniture',                   code:'BSMEDIUM',      price:'£79',  carrier:'B&S',   notes:'Standard furniture'},
+        {method:'Garden furniture',            code:'BSGARDBOX',     price:'FREE', carrier:'B&S',   notes:'Excludes pergolas'},
+        {method:'Large furniture (oversized)', code:'ASSISTED',      price:'£149', carrier:'B&S',   notes:'Requires assistance'},
+      ]
+    },
+    {
+      period: 'Aug 2023 — New delivery structure introduced',
+      rows: [
+        {method:'Small furniture courier',     code:'BSSMALL',       price:'£29',  carrier:'DPD',   notes:'Dining chairs ≤3, bar stools, small tables'},
+        {method:'Dining chairs ≥4',            code:'BSFOURDCDC',    price:'£19',  carrier:'DPD',   notes:'4 or more dining chairs'},
+        {method:'Medium furniture',            code:'BSMEDIUM',      price:'£49',  carrier:'B&S',   notes:''},
+        {method:'Large furniture',             code:'BSLARGE',       price:'£79',  carrier:'B&S',   notes:''},
+        {method:'Mattress',                    code:'BSMATTRESS',    price:'£29',  carrier:'B&S',   notes:''},
+        {method:'Accessories',                 code:'DPDACC',        price:'£9',   carrier:'DPD',   notes:''},
+        {method:'Large accessories',           code:'DPDLRGACC',     price:'£30',  carrier:'DPD',   notes:''},
+        {method:'Assisted delivery',           code:'ASSISTED',      price:'£149', carrier:'B&S',   notes:''},
+      ]
+    },
+    {
+      period: 'Dec 2024 — Dining chair restructure',
+      rows: [
+        {method:'DPD Parcel (small furniture)', code:'DPDPARCEL',    price:'£15',  carrier:'DPD',   notes:'Dining chairs ≤3, bar stools'},
+        {method:'DPD Freight (oversized/heavy)', code:'DPDFFREIGHT', price:'£29',  carrier:'DPD',   notes:'Large/heavy dining chairs defaulted here'},
+        {method:'Dining chairs ≥4',            code:'BSFOURDCDC',    price:'£29',  carrier:'DPD',   notes:'Increased from £19'},
+        {method:'DPD Accessory Parcel',        code:'DPDPARACC',     price:'£6',   carrier:'DPD',   notes:''},
+        {method:'DPD Large Accessories',       code:'DPDLRGACC',     price:'£15',  carrier:'DPD',   notes:''},
+        {method:'Rug Parcelforce',             code:'RUGPARCEL',     price:'£15',  carrier:'DPD',   notes:''},
+        {method:'Mattress delivery',           code:'BSMATTRESS',    price:'£29',  carrier:'B&S',   notes:''},
+        {method:'Medium delivery',             code:'MEDIUMDEL',     price:'£59',  carrier:'B&S',   notes:''},
+        {method:'Self-assembly medium',        code:'BSMEDIUMSA',    price:'£59',  carrier:'B&S',   notes:''},
+        {method:'DX 2-crew',                   code:'DX2CREW',       price:'£49',  carrier:'DX',    notes:'Armchairs, TV units, coffee tables'},
+        {method:'Large item delivery',         code:'LARGEDEBS',     price:'£89',  carrier:'B&S',   notes:''},
+        {method:'Assisted delivery',           code:'ASSISTED',      price:'£149', carrier:'B&S',   notes:''},
+      ]
+    },
+    {
+      period: 'Apr 2025 — Medium & Large increase',
+      rows: [
+        {method:'Medium delivery',             code:'MEDIUMDEL',     price:'£59',  carrier:'B&S',   notes:'No change — already £59 from Dec 2024'},
+        {method:'Large item delivery',         code:'LARGEDEBS',     price:'£89',  carrier:'B&S',   notes:'No change — already £89 from Dec 2024'},
+        {method:'DX 2-crew (armchairs etc)',   code:'DX2CREW',       price:'£49',  carrier:'DX',    notes:'No change'},
+        {method:'DX Small',                    code:'DXSMALL',       price:'£9',   carrier:'DX',    notes:''},
+        {method:'DX Small accessories',        code:'DXSMALLAC',     price:'£6',   carrier:'DX',    notes:''},
+        {method:'DX Large accessories',        code:'DXLRGACC',      price:'£15',  carrier:'DX',    notes:''},
+        {method:'Rug delivery',                code:'RUGPARCEL',     price:'£15',  carrier:'DX',    notes:''},
+      ]
+    },
+    {
+      period: 'Aug 2025 — Small furniture increase',
+      rows: [
+        {method:'DPD Parcel / Small furniture', code:'DPDPARCEL',    price:'£15',  carrier:'DPD',   notes:'Dining chairs ≤3 — increased from £9 to £15'},
+        {method:'DPD Freight',                 code:'DPDFREIGHT',    price:'£29',  carrier:'DPD',   notes:'Oversized/heavy items — no change'},
+      ]
+    },
+    {
+      period: 'Mar 2026 — Medium & Large increase (current)',
+      rows: [
+        {method:'Large furniture',             code:'LARGEDEBS',     price:'£99',  carrier:'B&S',   notes:'Sofas, sofa beds, wardrobes — increased from £89'},
+        {method:'Medium furniture (B&S)',      code:'MEDIUMDEL',     price:'£69',  carrier:'B&S',   notes:'Beds, dining tables, sideboards — increased from £59'},
+        {method:'Medium furniture (DX 2-crew)', code:'DX2CREW',      price:'£49',  carrier:'DX',    notes:'Armchairs, TV units, coffee tables — no change'},
+        {method:'Mattress',                    code:'BSMATTRESS',    price:'£29',  carrier:'B&S',   notes:'No change'},
+        {method:'Small furniture',             code:'DPDPARCEL',     price:'£15',  carrier:'DPD',   notes:'Dining chairs ≤3, bar stools — no change'},
+        {method:'4+ dining chairs / DPD Freight', code:'DPDFREIGHT', price:'£29', carrier:'DPD',   notes:'No change'},
+        {method:'Small accessories',           code:'DPDPARACC',     price:'£6',   carrier:'DPD',   notes:'No change'},
+        {method:'Large accessories & rugs',    code:'DPDLRGACC',     price:'£29',  carrier:'DPD',   notes:''},
+        {method:'Assisted delivery',           code:'ASSISTED',      price:'£149', carrier:'B&S',   notes:'No change'},
+        {method:'Click & Collect',             code:'COLLECTION',    price:'FREE', carrier:'Self',  notes:'All furniture from 4 warehouses or 11 stores'},
+      ]
+    },
+  ];
+
+  const carrierColor = {'B&S':'#1A2A49','DPD':'#E67E22','DX':'#8E44AD','Self':'#2D8A5F','Free':'#2D8A5F'};
+  const periodColors = ['#95A5A6','#7F8C8D','#E67E22','#8E44AD','#C0392B','#1A2A49'];
+
+  document.getElementById('delivery-timeline').innerHTML = history.map((period, pi) => `
+    <div style="margin-bottom:28px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:4px;height:20px;border-radius:2px;background:${periodColors[pi]};flex-shrink:0"></div>
+        <h3 style="font-size:13px;font-weight:700;color:var(--navy)">${period.period}</h3>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--navy)">
+              <th style="padding:7px 12px;text-align:left;color:rgba(255,255,255,.8);font-weight:600;font-size:11px">Delivery method</th>
+              <th style="padding:7px 12px;text-align:left;color:rgba(255,255,255,.8);font-weight:600;font-size:11px">Code</th>
+              <th style="padding:7px 12px;text-align:center;color:rgba(255,255,255,.8);font-weight:600;font-size:11px">Price</th>
+              <th style="padding:7px 12px;text-align:left;color:rgba(255,255,255,.8);font-weight:600;font-size:11px">Carrier</th>
+              <th style="padding:7px 12px;text-align:left;color:rgba(255,255,255,.8);font-weight:600;font-size:11px">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${period.rows.map((r,ri) => `
+              <tr style="background:${ri%2===0?'var(--surface)':'var(--bg)'}">
+                <td style="padding:7px 12px;font-weight:500;color:var(--text)">${r.method}</td>
+                <td style="padding:7px 12px;font-family:monospace;font-size:11px;color:var(--muted)">${r.code}</td>
+                <td style="padding:7px 12px;text-align:center;font-weight:700;color:var(--navy)">${r.price}</td>
+                <td style="padding:7px 12px">
+                  <span style="background:${carrierColor[r.carrier]||'#ccc'};color:#fff;border-radius:4px;padding:2px 8px;font-size:10px;font-weight:700">${r.carrier}</span>
+                </td>
+                <td style="padding:7px 12px;font-size:11px;color:var(--muted)">${r.notes}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ═══════════════════════════════════════════════════════

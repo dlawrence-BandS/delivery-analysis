@@ -813,6 +813,88 @@ LEFT JOIN checkout c USING (week, delivery_tier)
 ORDER BY p.week, p.delivery_tier
 """
 
+
+FUNNEL_CHANGE_IMPACT_QUERY = f"""
+-- For each delivery change: 4-week avg of each funnel step before vs after
+-- Gives step-by-step drop-off rates around each change date
+WITH weekly_funnel AS (
+  SELECT
+    {WEEK_EXPR} AS week,
+    COUNTIF(event_name = 'session_start')     AS sessions,
+    COUNTIF(event_name = 'view_item')         AS product_views,
+    COUNTIF(event_name = 'add_to_cart')       AS add_to_cart,
+    COUNTIF(event_name = 'begin_checkout')    AS begin_checkout,
+    COUNTIF(event_name = 'add_shipping_info') AS add_shipping_info,
+    COUNTIF(event_name = 'add_payment_info')  AS add_payment_info,
+    COUNTIF(event_name = 'purchase')          AS purchase
+  FROM {EVENTS_TABLE}
+  WHERE _TABLE_SUFFIX BETWEEN '20250101' AND FORMAT_DATE('%Y%m%d', CURRENT_DATE())
+    AND event_name IN (
+      'session_start','view_item','add_to_cart','begin_checkout',
+      'add_shipping_info','add_payment_info','purchase'
+    )
+  GROUP BY 1
+),
+change_dates AS (
+  SELECT change_date, change_label FROM UNNEST([
+    STRUCT(DATE('2025-04-01') AS change_date, 'Apr 2025: Medium & Large increase' AS change_label),
+    STRUCT(DATE('2025-08-01'), 'Aug 2025: Small furniture increase'),
+    STRUCT(DATE('2026-03-27'), 'Mar 2026: Medium & Large increase')
+  ])
+),
+before_after AS (
+  SELECT
+    cd.change_label,
+    'before' AS period,
+    AVG(wf.sessions)          AS sessions,
+    AVG(wf.product_views)     AS product_views,
+    AVG(wf.add_to_cart)       AS add_to_cart,
+    AVG(wf.begin_checkout)    AS begin_checkout,
+    AVG(wf.add_shipping_info) AS add_shipping_info,
+    AVG(wf.add_payment_info)  AS add_payment_info,
+    AVG(wf.purchase)          AS purchase
+  FROM change_dates cd
+  JOIN weekly_funnel wf ON wf.week < cd.change_date
+    AND wf.week >= DATE_SUB(cd.change_date, INTERVAL 28 DAY)
+  GROUP BY 1,2
+  UNION ALL
+  SELECT
+    cd.change_label,
+    'after' AS period,
+    AVG(wf.sessions),
+    AVG(wf.product_views),
+    AVG(wf.add_to_cart),
+    AVG(wf.begin_checkout),
+    AVG(wf.add_shipping_info),
+    AVG(wf.add_payment_info),
+    AVG(wf.purchase)
+  FROM change_dates cd
+  JOIN weekly_funnel wf ON wf.week >= cd.change_date
+    AND wf.week < DATE_ADD(cd.change_date, INTERVAL 28 DAY)
+  GROUP BY 1,2
+)
+SELECT
+  change_label,
+  period,
+  ROUND(sessions, 1)          AS sessions,
+  ROUND(product_views, 1)     AS product_views,
+  ROUND(add_to_cart, 1)       AS add_to_cart,
+  ROUND(begin_checkout, 1)    AS begin_checkout,
+  ROUND(add_shipping_info, 1) AS add_shipping_info,
+  ROUND(add_payment_info, 1)  AS add_payment_info,
+  ROUND(purchase, 1)          AS purchase,
+  -- Step rates
+  ROUND(SAFE_DIVIDE(add_to_cart, product_views) * 100, 2)       AS view_to_atc_rate,
+  ROUND(SAFE_DIVIDE(begin_checkout, add_to_cart) * 100, 2)      AS atc_to_checkout_rate,
+  ROUND(SAFE_DIVIDE(add_shipping_info, begin_checkout) * 100, 2) AS checkout_to_shipping_rate,
+  ROUND(SAFE_DIVIDE(add_payment_info, add_shipping_info) * 100, 2) AS shipping_to_payment_rate,
+  ROUND(SAFE_DIVIDE(purchase, add_payment_info) * 100, 2)       AS payment_to_purchase_rate,
+  ROUND(SAFE_DIVIDE(purchase, begin_checkout) * 100, 2)         AS checkout_to_purchase_rate,
+  ROUND(SAFE_DIVIDE(purchase, add_to_cart) * 100, 2)            AS atc_to_purchase_rate
+FROM before_after
+ORDER BY change_label, period DESC
+"""
+
 # ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 def run_query(client: bigquery.Client, sql: str, label: str) -> list[dict]:
@@ -907,6 +989,10 @@ def main():
     print("\nFetching delivery tier performance...")
     tier_data = run_query(client, DELIVERY_TIER_QUERY, "delivery tier weekly")
     write_json(OUTPUT_DIR / "delivery_tier.json", tier_data)
+
+    print("\nFetching funnel change impact...")
+    funnel_impact = run_query(client, FUNNEL_CHANGE_IMPACT_QUERY, "funnel change impact")
+    write_json(OUTPUT_DIR / "funnel_change_impact.json", funnel_impact)
 
     print("\nWriting meta...")
     meta = {

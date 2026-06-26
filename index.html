@@ -249,6 +249,7 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
     </div>
     <div class="sub-nav" id="sub-nav-funnel" style="display:none">
       <button class="sub-btn active" data-panel="funnel">Site-wide Funnel</button>
+      <button class="sub-btn" data-panel="funnelimpact">Impact by Change</button>
       <button class="sub-btn" data-panel="catfunnel">By Category / Product</button>
     </div>
     <div class="sub-nav" id="sub-nav-delivery" style="display:none">
@@ -496,6 +497,12 @@ td.tag{font-size:10px;background:var(--bg);border-radius:4px;padding:2px 6px;col
       </div>
       <div class="section-hdr"><h2>Units per transaction by product</h2><span id="units-count"></span></div>
       <div class="drill-section" style="padding:0"><div class="table-wrap" style="max-height:600px"><table class="data-table" id="units-table"><thead><tr><th data-col="product_name">Product</th><th data-col="category">Category</th><th data-col="transactions" class="num">Transactions</th><th data-col="total_units" class="num">Total units</th><th data-col="avg_units_per_tx" class="num">Avg units/tx</th><th data-col="pct_tx_4plus_units" class="num">% tx with 4+</th></tr></thead><tbody id="units-tbody"></tbody></table></div></div>
+    </div>
+
+    <!-- ══════════════════════ FUNNEL CHANGE IMPACT ══════════════════════ -->
+    <div class="tab-panel" id="panel-funnelimpact">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px">4-week average at each checkout step, before vs after each delivery cost change. Shows exactly where in the funnel customers dropped off more after a price rise.</p>
+      <div id="funnel-impact-content"></div>
     </div>
 
     <!-- ══════════════════════ FUNNEL BY CATEGORY ══════════════════════ -->
@@ -780,7 +787,7 @@ async function loadJSON(p){
 
 async function initDashboard(){
   try{
-    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd,catFunnel,subcatFunnel,prodFunnel,tierData]=await Promise.all([
+    const [meta,cat,subcat,prod,funnel,aov,units,impact,impactSubcat,impactProd,catFunnel,subcatFunnel,prodFunnel,tierData,funnelImpact]=await Promise.all([
       loadJSON('data/meta.json'),
       loadJSON('data/category_weekly.json'),
       loadJSON('data/subcategory_weekly.json'),
@@ -795,12 +802,13 @@ async function initDashboard(){
       loadJSON('data/subcategory_funnel.json').catch(()=>[]),
       loadJSON('data/product_funnel.json').catch(()=>[]),
       loadJSON('data/delivery_tier.json').catch(()=>[]),
+      loadJSON('data/funnel_change_impact.json').catch(()=>[]),
     ]);
     S.meta=meta; S.categoryData=cat; S.subcategoryData=subcat; S.productData=prod;
     S.funnelData=funnel; S.aovData=aov; S.unitsData=units;
     S.impactData=impact; S.impactSubcat=impactSubcat; S.impactProduct=impactProd;
     S.catFunnelData=catFunnel||[]; S.subcatFunnelData=subcatFunnel||[]; S.prodFunnelData=prodFunnel||[];
-    S.tierData=tierData||[];
+    S.tierData=tierData||[]; S.funnelImpact=funnelImpact||[];
 
     document.getElementById('loadingState').style.display='none';
     document.getElementById('mainContent').style.display='block';
@@ -819,6 +827,7 @@ async function initDashboard(){
     initDelivery();
     initCatFunnel();
     initTierStats();
+    initFunnelImpact();
     initAI();
 
   }catch(err){
@@ -2374,6 +2383,136 @@ function initTierStats(){
   fromEl.addEventListener('change',render); toEl.addEventListener('change',render);
   document.getElementById('tier-reset').addEventListener('click',()=>{fromEl.value=minD;toEl.value=maxD;selectedTier=null;render();});
   render();
+}
+
+// ═══════════════════════════════════════════════════════
+//  FUNNEL CHANGE IMPACT
+// ═══════════════════════════════════════════════════════
+function initFunnelImpact(){
+  const container = document.getElementById('funnel-impact-content');
+  if(!S.funnelImpact||!S.funnelImpact.length){
+    container.innerHTML = '<div class="loading-state" style="padding:40px"><div>No funnel impact data yet. Run fetch_data.py to generate.</div></div>';
+    return;
+  }
+
+  const changes = [...new Set(S.funnelImpact.map(d=>d.change_label))].sort();
+  const STEPS = [
+    {key:'product_views',        label:'Product views'},
+    {key:'add_to_cart',          label:'Add to cart'},
+    {key:'begin_checkout',       label:'Begin checkout'},
+    {key:'add_shipping_info',    label:'Add shipping info'},
+    {key:'add_payment_info',     label:'Add payment info'},
+    {key:'purchase',             label:'Purchase'},
+  ];
+  const RATES = [
+    {key:'view_to_atc_rate',          label:'View → ATC',             step:'After product view'},
+    {key:'atc_to_checkout_rate',      label:'ATC → Checkout',         step:'After adding to cart'},
+    {key:'checkout_to_shipping_rate', label:'Checkout → Shipping info', step:'After beginning checkout — sees delivery cost'},
+    {key:'shipping_to_payment_rate',  label:'Shipping → Payment',     step:'After seeing delivery cost'},
+    {key:'payment_to_purchase_rate',  label:'Payment → Purchase',     step:'After adding payment info'},
+    {key:'checkout_to_purchase_rate', label:'Checkout → Purchase',    step:'Overall checkout completion'},
+    {key:'atc_to_purchase_rate',      label:'ATC → Purchase',         step:'Overall post-cart conversion'},
+  ];
+
+  const changeColors = {'Apr 2025: Medium & Large increase':'#E67E22','Aug 2025: Small furniture increase':'#8E44AD','Mar 2026: Medium & Large increase':'#C0392B'};
+
+  function delta(before, after){
+    if(before==null||after==null||before===0) return null;
+    return +((after-before)/before*100).toFixed(1);
+  }
+
+  function deltaHtml(d){
+    if(d==null) return '<span style="color:var(--muted)">—</span>';
+    const col = d>0?'var(--pos)':d<0?'var(--neg)':'var(--muted)';
+    return `<span style="color:${col};font-weight:700">${d>0?'+':''}${d}%</span>`;
+  }
+
+  container.innerHTML = changes.map(ch => {
+    const before = S.funnelImpact.find(d=>d.change_label===ch&&d.period==='before');
+    const after  = S.funnelImpact.find(d=>d.change_label===ch&&d.period==='after');
+    if(!before||!after) return '';
+    const color = changeColors[ch]||'#1A2A49';
+
+    // Funnel bars
+    const maxVal = Math.max(...STEPS.map(s=>before[s.key]||0));
+    const barsHtml = `
+      <div style="display:grid;grid-template-columns:repeat(${STEPS.length},1fr);gap:8px;margin-bottom:20px">
+        ${STEPS.map(s=>{
+          const bv=before[s.key]||0, av=after[s.key]||0;
+          const bh=maxVal?Math.max(4,Math.round(bv/maxVal*120)):4;
+          const ah=maxVal?Math.max(4,Math.round(av/maxVal*120)):4;
+          const d=delta(bv,av);
+          return `<div style="text-align:center">
+            <div style="font-size:10px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">${s.label}</div>
+            <div style="display:flex;gap:4px;justify-content:center;align-items:flex-end;height:130px">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="font-size:10px;color:var(--muted)">${fmt.n(Math.round(bv))}</div>
+                <div style="width:28px;background:#BDC3C7;border-radius:3px 3px 0 0;height:${bh}px" title="Before: ${fmt.n(Math.round(bv))}"></div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+                <div style="font-size:10px;color:var(--muted)">${fmt.n(Math.round(av))}</div>
+                <div style="width:28px;background:${color};border-radius:3px 3px 0 0;height:${ah}px" title="After: ${fmt.n(Math.round(av))}"></div>
+              </div>
+            </div>
+            <div style="margin-top:6px;font-size:11px">${deltaHtml(d)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:16px;font-size:11px">
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;background:#BDC3C7;border-radius:2px"></div>4 weeks before</div>
+        <div style="display:flex;align-items:center;gap:5px"><div style="width:12px;height:12px;background:${color};border-radius:2px"></div>4 weeks after</div>
+      </div>`;
+
+    // Rates table
+    const ratesHtml = `
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--navy)">
+              <th style="padding:8px 12px;text-align:left;color:rgba(255,255,255,.8);font-size:11px;font-weight:600">Funnel step</th>
+              <th style="padding:8px 12px;text-align:left;color:rgba(255,255,255,.8);font-size:11px;font-weight:600">Context</th>
+              <th style="padding:8px 12px;text-align:center;color:rgba(255,255,255,.8);font-size:11px;font-weight:600">Before</th>
+              <th style="padding:8px 12px;text-align:center;color:rgba(255,255,255,.8);font-size:11px;font-weight:600">After</th>
+              <th style="padding:8px 12px;text-align:center;color:rgba(255,255,255,.8);font-size:11px;font-weight:600">Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${RATES.map((r,i)=>{
+              const bv=before[r.key], av=after[r.key];
+              const d=delta(bv,av);
+              const highlight = r.key==='checkout_to_shipping_rate'||r.key==='shipping_to_payment_rate';
+              return `<tr style="background:${highlight?'rgba(200,169,110,0.1)':i%2===0?'var(--surface)':'var(--bg)'}">
+                <td style="padding:8px 12px;font-weight:${highlight?'700':'500'}">${r.label}${highlight?' ⚠️':''}</td>
+                <td style="padding:8px 12px;font-size:11px;color:var(--muted)">${r.step}</td>
+                <td style="padding:8px 12px;text-align:center;font-variant-numeric:tabular-nums">${bv!=null?bv.toFixed(2)+'%':'—'}</td>
+                <td style="padding:8px 12px;text-align:center;font-variant-numeric:tabular-nums">${av!=null?av.toFixed(2)+'%':'—'}</td>
+                <td style="padding:8px 12px;text-align:center">${deltaHtml(d)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    return `
+      <div style="margin-bottom:32px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid ${color}">
+          <div style="width:4px;height:24px;background:${color};border-radius:2px;flex-shrink:0"></div>
+          <h2 style="font-size:15px;font-weight:700;color:var(--navy)">${ch}</h2>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:4px">Step volumes — 4wk avg before vs after</h3>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:16px">Grey = before · Coloured = after · % shows change</div>
+          ${barsHtml}
+        </div>
+        <div class="drill-section" style="padding:0">
+          <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+            <strong style="font-size:13px">Step conversion rates</strong>
+            <span style="font-size:11px;color:var(--muted);margin-left:8px">⚠️ highlighted rows = steps where delivery cost is revealed</span>
+          </div>
+          ${ratesHtml}
+        </div>
+      </div>`;
+  }).join('');
 }
 // ─── Boot
 initDashboard();
